@@ -1,0 +1,14 @@
+{
+  "name": "fullstack-app",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "install-all": "npm install && cd frontend && npm install && cd ../backend && npm install && cd ../slack-bot && npm install",
+    "start": "npx concurrently \"cd frontend && npm start\" \"cd backend && npm start\" \"cd slack-bot && npm start\"",
+    "dev": "npx concurrently \"cd frontend && npm run dev\" \"cd backend && npm run dev\"",
+    "build": "cd frontend && npm run build && cd ../backend && npm run build && cd ../slack-bot && npm run build"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
