@@ -19,6 +19,11 @@ export function Header() {
           <Link to="/">
             <Button variant="ghost">Home</Button>
           </Link>
+          {isAuthenticated && (
+          <Link to="/dashboard">
+            <Button variant="ghost">Dashboard</Button>
+          </Link>
+          )}
           <Link to="/about">
             <Button variant="ghost">About</Button>
           </Link>
