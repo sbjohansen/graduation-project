@@ -4,7 +4,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import { Link, useNavigate } from "react-router-dom";
 
 export function Header() {
-  const { isAuthenticated, logout } = useAuth();
+  const { isAuthenticated, isAdmin, logout } = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -22,6 +22,13 @@ export function Header() {
           <Link to="/about">
             <Button variant="ghost">About</Button>
           </Link>
+          {isAuthenticated && isAdmin && (
+            <Link to="/admin">
+              <Button variant="ghost" className="text-blue-600 dark:text-blue-400">
+                Admin
+              </Button>
+            </Link>
+          )}
         </nav>
         <div className="flex items-center gap-4">
           {isAuthenticated ? (

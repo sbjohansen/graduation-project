@@ -7,11 +7,13 @@ const Auth = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
   const { login } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage(""); // Clear previous errors
     const endpoint = isLogin ? "/api/auth/login" : "/api/auth/register";
     const body = isLogin ? { email, password } : { email, password, name };
 
@@ -26,10 +28,20 @@ const Auth = () => {
       if (data.token) {
         login(data.token);
         navigate("/");
+      } else {
+        // Handle authentication error from API
+        setErrorMessage(data.message || "Authentication failed. Please check your credentials.");
       }
     } catch (error) {
       console.error("Auth error:", error);
+      setErrorMessage("Failed to connect to authentication service. Please try again later.");
     }
+  };
+
+  // Clear error when user makes changes to the form
+  const handleInputChange = (setter: React.Dispatch<React.SetStateAction<string>>, value: string) => {
+    setter(value);
+    if (errorMessage) setErrorMessage("");
   };
 
   return (
@@ -37,6 +49,11 @@ const Auth = () => {
       <h1 className="text-2xl font-bold mb-6">
         {isLogin ? "Login" : "Register"}
       </h1>
+      {errorMessage && (
+        <div className="mb-4 p-2 bg-red-100 border border-red-400 text-red-700 rounded">
+          {errorMessage}
+        </div>
+      )}
       <form onSubmit={handleSubmit} className="space-y-4">
         {!isLogin && (
           <div>
@@ -44,7 +61,7 @@ const Auth = () => {
             <input
               type="text"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => handleInputChange(setName, e.target.value)}
               className="w-full p-2 border rounded"
               required
             />
@@ -55,7 +72,7 @@ const Auth = () => {
           <input
             type="email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => handleInputChange(setEmail, e.target.value)}
             className="w-full p-2 border rounded"
             required
           />
@@ -65,7 +82,7 @@ const Auth = () => {
           <input
             type="password"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) => handleInputChange(setPassword, e.target.value)}
             className="w-full p-2 border rounded"
             required
           />
@@ -78,7 +95,10 @@ const Auth = () => {
         </button>
       </form>
       <button
-        onClick={() => setIsLogin(!isLogin)}
+        onClick={() => {
+          setIsLogin(!isLogin);
+          setErrorMessage("");
+        }}
         className="w-full mt-4 text-blue-500"
       >
         {isLogin ? "Need an account? Register" : "Have an account? Login"}
