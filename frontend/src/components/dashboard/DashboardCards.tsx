@@ -1,5 +1,5 @@
-import ActivityCard from "./ActivityCard";
-import SettingsCard from "./SettingsCard";
+import ActivityCard from './ActivityCard';
+import SettingsCard from './SettingsCard';
 
 const DashboardCards = () => {
   return (
@@ -10,4 +10,4 @@ const DashboardCards = () => {
   );
 };
 
-export default DashboardCards; 
+export default DashboardCards;

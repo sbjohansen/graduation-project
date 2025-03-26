@@ -11,4 +11,4 @@ export interface AdminStats {
   totalUsers: number;
   adminUsers: number;
   regularUsers: number;
-} 
+}

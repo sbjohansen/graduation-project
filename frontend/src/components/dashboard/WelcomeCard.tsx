@@ -1,10 +1,5 @@
-import {
-  Card,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { UserDashboardData } from "@/types";
+import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { UserDashboardData } from '@/types';
 
 interface WelcomeCardProps {
   userData: UserDashboardData | null;
@@ -25,4 +20,4 @@ const WelcomeCard = ({ userData }: WelcomeCardProps) => {
   );
 };
 
-export default WelcomeCard; 
+export default WelcomeCard;

@@ -9,4 +9,4 @@ export interface ActivityData {
   title: string;
   timestamp: string;
   description?: string;
-} 
+}

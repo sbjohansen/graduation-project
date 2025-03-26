@@ -1,7 +1,14 @@
-import { Card, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Switch } from "@/components/ui/switch";
-import { UserData } from "@/types";
+import { Card, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Switch } from '@/components/ui/switch';
+import { UserData } from '@/types';
 
 interface UserManagementTableProps {
   users: UserData[];
@@ -27,7 +34,7 @@ const UserManagementTable = ({ users, onToggleAdmin }: UserManagementTableProps)
           {users.map((user) => (
             <TableRow key={user.id}>
               <TableCell>{user.id}</TableCell>
-              <TableCell>{user.name || "—"}</TableCell>
+              <TableCell>{user.name || '—'}</TableCell>
               <TableCell>{user.email}</TableCell>
               <TableCell>
                 <div className="flex items-center gap-2">
@@ -36,7 +43,7 @@ const UserManagementTable = ({ users, onToggleAdmin }: UserManagementTableProps)
                     onCheckedChange={() => onToggleAdmin(user.id, user.isAdmin)}
                     aria-label={`Toggle admin status for ${user.email}`}
                   />
-                  <span className="text-sm">{user.isAdmin ? "Admin" : "User"}</span>
+                  <span className="text-sm">{user.isAdmin ? 'Admin' : 'User'}</span>
                 </div>
               </TableCell>
             </TableRow>
@@ -54,4 +61,4 @@ const UserManagementTable = ({ users, onToggleAdmin }: UserManagementTableProps)
   );
 };
 
-export default UserManagementTable; 
+export default UserManagementTable;

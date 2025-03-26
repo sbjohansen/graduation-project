@@ -5,8 +5,8 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+} from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 
 const SettingsCard = () => {
   return (
@@ -25,4 +25,4 @@ const SettingsCard = () => {
   );
 };
 
-export default SettingsCard; 
+export default SettingsCard;

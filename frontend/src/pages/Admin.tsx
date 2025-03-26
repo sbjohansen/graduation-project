@@ -1,11 +1,11 @@
-import { useState, useEffect } from "react";
-import { useAuth } from "../contexts/AuthContext";
-import { useNavigate } from "react-router-dom";
-import AdminStats from "../components/admin/AdminStats";
-import AdminAlerts from "../components/admin/AdminAlerts";
-import UserManagementTable from "../components/admin/UserManagementTable";
-import LoadingState from "../components/admin/LoadingState";
-import { UserData, AdminStats as AdminStatsType } from "@/types";
+import { useState, useEffect } from 'react';
+import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
+import AdminStats from '../components/admin/AdminStats';
+import AdminAlerts from '../components/admin/AdminAlerts';
+import UserManagementTable from '../components/admin/UserManagementTable';
+import LoadingState from '../components/admin/LoadingState';
+import { UserData, AdminStats as AdminStatsType } from '@/types';
 
 const Admin = () => {
   const { token, checkAdminStatus } = useAuth();
@@ -21,7 +21,7 @@ const Admin = () => {
     const verifyAdmin = async () => {
       const isAdmin = await checkAdminStatus();
       if (!isAdmin) {
-        navigate("/");
+        navigate('/');
       }
     };
 
@@ -34,27 +34,27 @@ const Admin = () => {
       setLoading(true);
       try {
         // Fetch basic admin message
-        const basicResponse = await fetch("http://localhost:4000/api/admin", {
-          method: "GET",
+        const basicResponse = await fetch('http://localhost:4000/api/admin', {
+          method: 'GET',
           headers: {
             Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
+            'Content-Type': 'application/json',
           },
         });
 
         if (!basicResponse.ok) {
-          throw new Error("Failed to verify admin access");
+          throw new Error('Failed to verify admin access');
         }
 
         const basicData = await basicResponse.json();
         setAdminMessage(basicData.message);
 
         // Fetch users list
-        const usersResponse = await fetch("http://localhost:4000/api/admin/users", {
-          method: "GET",
+        const usersResponse = await fetch('http://localhost:4000/api/admin/users', {
+          method: 'GET',
           headers: {
             Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
+            'Content-Type': 'application/json',
           },
         });
 
@@ -64,11 +64,11 @@ const Admin = () => {
         }
 
         // Fetch admin stats
-        const statsResponse = await fetch("http://localhost:4000/api/admin/stats", {
-          method: "GET",
+        const statsResponse = await fetch('http://localhost:4000/api/admin/stats', {
+          method: 'GET',
           headers: {
             Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
+            'Content-Type': 'application/json',
           },
         });
 
@@ -79,11 +79,11 @@ const Admin = () => {
 
         setError(null);
       } catch (err) {
-        console.error("Admin data fetch error:", err);
-        setError(err instanceof Error ? err.message : "Failed to load admin data");
+        console.error('Admin data fetch error:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load admin data');
         // If authentication failed, redirect
-        if (err instanceof Error && err.message.includes("admin access")) {
-          navigate("/");
+        if (err instanceof Error && err.message.includes('admin access')) {
+          navigate('/');
         }
       } finally {
         setLoading(false);
@@ -99,41 +99,35 @@ const Admin = () => {
   const handleToggleAdmin = async (userId: number, currentStatus: boolean) => {
     try {
       const response = await fetch(`http://localhost:4000/api/admin/users/${userId}/admin`, {
-        method: "PUT",
+        method: 'PUT',
         headers: {
           Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({ isAdmin: !currentStatus }),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to update user");
+        throw new Error(errorData.error || 'Failed to update user');
       }
 
       // Update the users list
-      setUsers(users.map(user => 
-        user.id === userId 
-          ? { ...user, isAdmin: !currentStatus } 
-          : user
-      ));
+      setUsers(
+        users.map((user) => (user.id === userId ? { ...user, isAdmin: !currentStatus } : user))
+      );
 
       // Update stats if they exist
       if (stats) {
         setStats({
           ...stats,
-          adminUsers: currentStatus 
-            ? stats.adminUsers - 1 
-            : stats.adminUsers + 1,
-          regularUsers: currentStatus 
-            ? stats.regularUsers + 1 
-            : stats.regularUsers - 1,
+          adminUsers: currentStatus ? stats.adminUsers - 1 : stats.adminUsers + 1,
+          regularUsers: currentStatus ? stats.regularUsers + 1 : stats.regularUsers - 1,
         });
       }
     } catch (err) {
-      console.error("Error updating user:", err);
-      setError(err instanceof Error ? err.message : "Failed to update user");
+      console.error('Error updating user:', err);
+      setError(err instanceof Error ? err.message : 'Failed to update user');
     }
   };
 
@@ -144,14 +138,14 @@ const Admin = () => {
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-6">Admin Dashboard</h1>
-      
+
       <AdminAlerts error={error} adminMessage={adminMessage} />
-      
+
       <AdminStats stats={stats} />
-      
+
       <UserManagementTable users={users} onToggleAdmin={handleToggleAdmin} />
     </div>
   );
 };
 
-export default Admin; 
+export default Admin;

@@ -5,12 +5,12 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+} from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 
 const ActivityCard = () => {
   return (
-    <Card className="h-full">
+    <Card className="h-full ">
       <CardHeader>
         <CardTitle>Your Activities</CardTitle>
         <CardDescription>View and manage your recent activities</CardDescription>
@@ -25,4 +25,4 @@ const ActivityCard = () => {
   );
 };
 
-export default ActivityCard; 
+export default ActivityCard;

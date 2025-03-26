@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
-@import "tailwindcss";
-@import "tw-animate-css";
+@import 'tailwindcss';
+@import 'tw-animate-css';
 
 @layer variants {
   .dark * {
@@ -36,6 +36,24 @@
     --sidebar-accent-foreground: oklch(0.985 0 0);
     --sidebar-border: oklch(1 0 0 / 10%);
     --sidebar-ring: oklch(0.556 0 0);
+
+    /* Smoother background gradient */
+    --gradient-background: radial-gradient(
+      circle at center,
+      rgba(30, 41, 59, 0.9) 0%,
+      rgba(15, 23, 42, 0.95) 100%
+    );
+    --hero-gradient: linear-gradient(
+      to right,
+      rgba(49, 46, 129, 0.95) 0%,
+      rgba(79, 70, 229, 0.9) 30%,
+      rgba(124, 58, 237, 0.9) 70%,
+      rgba(30, 41, 59, 0.95) 100%
+    );
+    --card-glass-bg: rgba(30, 41, 59, 0.5);
+    --card-glass-border: rgba(255, 255, 255, 0.1);
+    --gradient-text: linear-gradient(to right, #a5b4fc, #d8b4fe);
+    --gradient-button: linear-gradient(to right, rgba(79, 70, 229, 1), rgba(124, 58, 237, 1));
   }
 }
 
@@ -72,6 +90,24 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+
+  /* Smoother light-theme background gradient */
+  --gradient-background: linear-gradient(
+    135deg,
+    rgba(239, 246, 255, 0.5) 0%,
+    rgba(224, 231, 255, 0.5) 50%,
+    rgba(237, 233, 254, 0.5) 100%
+  );
+  --hero-gradient: linear-gradient(
+    to right,
+    rgba(37, 99, 235, 0.85) 0%,
+    rgba(79, 70, 229, 0.85) 50%,
+    rgba(147, 51, 234, 0.85) 100%
+  );
+  --card-glass-bg: rgba(255, 255, 255, 0.4);
+  --card-glass-border: rgba(255, 255, 255, 0.25);
+  --gradient-text: linear-gradient(to right, #1e40af, #6d28d9);
+  --gradient-button: linear-gradient(to right, #2563eb, #7c3aed);
 }
 
 @theme inline {
@@ -117,6 +153,67 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground min-h-screen;
+  }
+
+  /* Apply the semi-transparent gradient background to the body */
+  body {
+    background: var(--gradient-background);
+    background-attachment: fixed;
+    position: relative;
+  }
+
+  /* Background color underneath the semi-transparent gradient */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: linear-gradient(135deg, rgb(226, 240, 253), rgb(219, 234, 254), rgb(224, 231, 255));
+    z-index: -2;
+  }
+
+  .dark body::after {
+    background: linear-gradient(135deg, rgb(15, 23, 42), rgb(30, 41, 59), rgb(15, 23, 42));
+  }
+
+  /* Create a utility class for the hero gradient */
+  .hero-gradient {
+    background: var(--hero-gradient);
+  }
+
+  /* Glass card effect */
+  .card-glass {
+    background: var(--card-glass-bg);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--card-glass-border);
+    box-shadow: 0 2px 15px rgba(0, 0, 0, 0.05);
+  }
+
+  /* Additional glass card with darker background for better text contrast */
+  .card-glass-dark {
+    background: rgba(30, 41, 59, 0.1);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 2px 15px rgba(0, 0, 0, 0.05);
+  }
+
+  /* Gradient text */
+  .gradient-text {
+    background: var(--gradient-text);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* Gradient button */
+  .gradient-button {
+    background: var(--gradient-button);
+    color: white;
+    transition: all 0.3s ease;
+  }
+  .gradient-button:hover {
+    filter: brightness(1.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    cursor: pointer;
   }
 }

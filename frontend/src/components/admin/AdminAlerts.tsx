@@ -1,4 +1,4 @@
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface AdminAlertsProps {
   error: string | null;
@@ -13,7 +13,7 @@ const AdminAlerts = ({ error, adminMessage }: AdminAlertsProps) => {
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
-      
+
       {adminMessage && (
         <Alert className="mb-4 border-primary bg-primary/10">
           <AlertDescription className="text-primary">{adminMessage}</AlertDescription>
@@ -23,4 +23,4 @@ const AdminAlerts = ({ error, adminMessage }: AdminAlertsProps) => {
   );
 };
 
-export default AdminAlerts; 
+export default AdminAlerts;

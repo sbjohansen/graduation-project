@@ -1,5 +1,5 @@
-import { createContext, useContext, useState, ReactNode, useEffect } from "react";
-import { jwtDecode } from "jwt-decode";
+import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import { jwtDecode } from 'jwt-decode';
 
 interface UserData {
   id: number;
@@ -20,9 +20,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [token, setToken] = useState<string | null>(
-    localStorage.getItem("token")
-  );
+  const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
   const [userData, setUserData] = useState<UserData | null>(null);
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
 
@@ -34,7 +32,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUserData(decoded);
         setIsAdmin(!!decoded.isAdmin);
       } catch (error) {
-        console.error("Error decoding token:", error);
+        console.error('Error decoding token:', error);
         logout(); // If token is invalid, log the user out
       }
     } else {
@@ -48,11 +46,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (!token) return false;
 
     try {
-      const response = await fetch("http://localhost:4000/api/admin", {
-        method: "GET",
+      const response = await fetch('http://localhost:4000/api/admin', {
+        method: 'GET',
         headers: {
           Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
       });
 
@@ -64,21 +62,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return false;
       }
     } catch (error) {
-      console.error("Error verifying admin status:", error);
+      console.error('Error verifying admin status:', error);
       return false;
     }
   };
 
   const login = (newToken: string) => {
     setToken(newToken);
-    localStorage.setItem("token", newToken);
-    
+    localStorage.setItem('token', newToken);
+
     try {
       const decoded = jwtDecode<UserData>(newToken);
       setUserData(decoded);
       setIsAdmin(!!decoded.isAdmin);
     } catch (error) {
-      console.error("Error decoding token after login:", error);
+      console.error('Error decoding token after login:', error);
       setUserData(null);
       setIsAdmin(false);
     }
@@ -88,19 +86,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setToken(null);
     setUserData(null);
     setIsAdmin(false);
-    localStorage.removeItem("token");
+    localStorage.removeItem('token');
   };
 
   return (
     <AuthContext.Provider
-      value={{ 
-        token, 
+      value={{
+        token,
         userData,
-        login, 
-        logout, 
+        login,
+        logout,
         isAuthenticated: !!token,
         isAdmin,
-        checkAdminStatus
+        checkAdminStatus,
       }}
     >
       {children}
@@ -111,7 +109,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider");
+    throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
 };
