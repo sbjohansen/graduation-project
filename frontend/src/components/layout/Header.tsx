@@ -1,7 +1,7 @@
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '../ui/button';
 import { ModeToggle } from '../ui/mode-toggle';
-import { useAuth } from '../../contexts/AuthContext';
-import { Link, useNavigate } from 'react-router-dom';
 
 export function Header() {
   const { isAuthenticated, isAdmin, logout } = useAuth();
@@ -24,11 +24,18 @@ export function Header() {
             </Button>
           </Link>
           {isAuthenticated && (
-            <Link to="/dashboard">
-              <Button variant="ghost" className="text-foreground">
-                Dashboard
-              </Button>
-            </Link>
+            <>
+              <Link to="/dashboard">
+                <Button variant="ghost" className="text-foreground">
+                  Dashboard
+                </Button>
+              </Link>
+              <Link to="/drills">
+                <Button variant="ghost" className="text-foreground">
+                  Drills
+                </Button>
+              </Link>
+            </>
           )}
           <Link to="/about">
             <Button variant="ghost" className="text-foreground">

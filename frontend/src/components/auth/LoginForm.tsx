@@ -1,19 +1,19 @@
 import { useState } from 'react';
+import { cn } from '../../lib/utils';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
-import { cn } from '../../lib/utils';
 
 interface LoginFormProps extends React.ComponentPropsWithoutRef<'div'> {
-  handleLogin: (email: string, password: string) => Promise<void>;
+  onSubmit: (email: string, password: string) => Promise<void>;
   errorMessage?: string;
   isLoading?: boolean;
 }
 
 export function LoginForm({
   className,
-  handleLogin,
+  onSubmit,
   errorMessage,
   isLoading = false,
   ...props
@@ -23,7 +23,7 @@ export function LoginForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await handleLogin(email, password);
+    await onSubmit(email, password);
   };
 
   return (

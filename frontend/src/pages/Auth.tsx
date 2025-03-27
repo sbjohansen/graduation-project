@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LoginForm } from '../components/auth/LoginForm';
 import { RegisterForm } from '../components/auth/RegisterForm';
+import { PageTitle } from '../components/PageTitle';
+import { useAuth } from '../contexts/AuthContext';
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -43,7 +44,7 @@ const Auth = () => {
         setErrorMessage(data.message || 'Authentication failed. Please check your credentials.');
       }
     } catch (error) {
-      console.error('Auth error:', error);
+      console.error('Auth error:', error instanceof Error ? error.message : String(error));
       setErrorMessage('Failed to connect to authentication service. Please try again later.');
     } finally {
       setIsLoading(false);
@@ -69,7 +70,7 @@ const Auth = () => {
         setErrorMessage(data.message || 'Registration failed. Please try again.');
       }
     } catch (error) {
-      console.error('Auth error:', error);
+      console.error('Auth error:', error instanceof Error ? error.message : String(error));
       setErrorMessage('Failed to connect to authentication service. Please try again later.');
     } finally {
       setIsLoading(false);
@@ -77,13 +78,22 @@ const Auth = () => {
   };
 
   return (
-    <div className="container mx-auto max-w-md py-10">
-      {isLogin ? (
-        <LoginForm onSubmit={handleLogin} errorMessage={errorMessage} isLoading={isLoading} />
-      ) : (
-        <RegisterForm onSubmit={handleRegister} errorMessage={errorMessage} isLoading={isLoading} />
-      )}
-    </div>
+    <>
+      <PageTitle title={isLogin ? 'Login' : 'Register'} />
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-md mx-auto">
+          <h1 className="text-2xl font-bold mb-6 text-center">{isLogin ? 'Login' : 'Register'}</h1>
+          {errorMessage && (
+            <div className="mb-4 p-3 bg-red-100 text-red-700 rounded">{errorMessage}</div>
+          )}
+          {isLogin ? (
+            <LoginForm onSubmit={handleLogin} isLoading={isLoading} />
+          ) : (
+            <RegisterForm onSubmit={handleRegister} isLoading={isLoading} />
+          )}
+        </div>
+      </div>
+    </>
   );
 };
 

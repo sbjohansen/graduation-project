@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import { AdminStats as AdminStatsType, UserData } from '@/types';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import AdminStats from '../components/admin/AdminStats';
 import AdminAlerts from '../components/admin/AdminAlerts';
-import UserManagementTable from '../components/admin/UserManagementTable';
+import AdminStats from '../components/admin/AdminStats';
 import LoadingState from '../components/admin/LoadingState';
-import { UserData, AdminStats as AdminStatsType } from '@/types';
+import UserManagementTable from '../components/admin/UserManagementTable';
+import { PageTitle } from '../components/PageTitle';
+import { useAuth } from '../contexts/AuthContext';
 
 const Admin = () => {
   const { token, checkAdminStatus } = useAuth();
@@ -131,20 +132,22 @@ const Admin = () => {
     }
   };
 
-  if (loading) {
-    return <LoadingState />;
-  }
-
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-6">Admin Dashboard</h1>
-
-      <AdminAlerts error={error} adminMessage={adminMessage} />
-
-      <AdminStats stats={stats} />
-
-      <UserManagementTable users={users} onToggleAdmin={handleToggleAdmin} />
-    </div>
+    <>
+      <PageTitle title="Admin Dashboard" />
+      <div className="container mx-auto px-4 py-8">
+        <h1 className="text-3xl font-bold mb-6">Admin Dashboard</h1>
+        <AdminAlerts error={error} adminMessage={adminMessage} />
+        {loading ? (
+          <LoadingState />
+        ) : (
+          <>
+            <AdminStats stats={stats} />
+            <UserManagementTable users={users} onToggleAdmin={handleToggleAdmin} />
+          </>
+        )}
+      </div>
+    </>
   );
 };
 

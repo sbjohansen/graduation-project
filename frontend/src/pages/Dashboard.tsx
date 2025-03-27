@@ -1,6 +1,7 @@
 import DashboardCards from '@/components/dashboard/DashboardCards';
 import WelcomeCard from '@/components/dashboard/WelcomeCard';
 import { UserDashboardData } from '@/types';
+import { PageTitle } from '../components/PageTitle';
 import { useAuth } from '../contexts/AuthContext';
 
 const Dashboard = () => {
@@ -10,18 +11,20 @@ const Dashboard = () => {
   const dashboardUserData: UserDashboardData | null = userData
     ? {
         email: userData.email,
-        // Add any other properties from userData if they exist
       }
     : null;
 
   return (
-    <div className="container mx-auto p-6">
-      <h1 className="text-2xl font-bold mb-6">Dashboard</h1>
+    <>
+      <PageTitle title="Dashboard" />
+      <div className="container mx-auto p-6">
+        <h1 className="text-2xl font-bold mb-6">Dashboard</h1>
 
-      <WelcomeCard userData={dashboardUserData} />
+        <WelcomeCard userData={dashboardUserData} />
 
-      <DashboardCards />
-    </div>
+        <DashboardCards />
+      </div>
+    </>
   );
 };
 

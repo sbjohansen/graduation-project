@@ -1,12 +1,16 @@
 import HeroSection from '../components/home/HeroSection';
+import { PageTitle } from '../components/PageTitle';
 
 const Home = () => {
   return (
-    <div className="flex flex-col relative z-10">
-      <div className="hero-container relative">
-        <HeroSection />
+    <>
+      <PageTitle title="Home" />
+      <div className="flex flex-col relative z-10">
+        <div className="hero-container relative">
+          <HeroSection />
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 
