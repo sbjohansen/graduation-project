@@ -1,5 +1,5 @@
-import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { jwtDecode } from 'jwt-decode';
+import { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 
 interface UserData {
   id: number;
@@ -19,31 +19,17 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider = ({ children }: { children: ReactNode }) => {
+const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
   const [userData, setUserData] = useState<UserData | null>(null);
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
-
-  // Parse the token and set user data
-  useEffect(() => {
-    if (token) {
-      try {
-        const decoded = jwtDecode<UserData>(token);
-        setUserData(decoded);
-        setIsAdmin(!!decoded.isAdmin);
-      } catch (error) {
-        console.error('Error decoding token:', error);
-        logout(); // If token is invalid, log the user out
-      }
-    } else {
-      setUserData(null);
-      setIsAdmin(false);
-    }
-  }, [token]);
+  const [isAdminVerified, setIsAdminVerified] = useState<boolean>(false);
 
   // Function to verify admin status with the server
   const checkAdminStatus = async (): Promise<boolean> => {
-    if (!token) return false;
+    if (!token) {
+      return false;
+    }
 
     try {
       const response = await fetch('http://localhost:4000/api/admin', {
@@ -55,37 +41,61 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       });
 
       if (response.ok) {
+        setIsAdmin(true);
+        setIsAdminVerified(true);
         return true;
       } else {
-        // If server rejects admin status, update local state
-        if (isAdmin) setIsAdmin(false);
+        setIsAdmin(false);
+        setIsAdminVerified(true);
         return false;
       }
     } catch (error) {
-      console.error('Error verifying admin status:', error);
+      setIsAdmin(false);
+      setIsAdminVerified(true);
       return false;
     }
   };
 
+  // Verify admin status on token change
+  useEffect(() => {
+    const verifyAdminStatus = async () => {
+      if (token) {
+        try {
+          const decoded = jwtDecode<UserData>(token);
+          setUserData(decoded);
+
+          // Only check admin status if the token indicates admin privileges
+          if (decoded.isAdmin) {
+            await checkAdminStatus();
+          } else {
+            setIsAdmin(false);
+            setIsAdminVerified(true);
+          }
+        } catch (error) {
+          console.error('Error decoding token:', error);
+          logout();
+        }
+      } else {
+        setUserData(null);
+        setIsAdmin(false);
+        setIsAdminVerified(false);
+      }
+    };
+
+    verifyAdminStatus();
+  }, [token]);
+
   const login = (newToken: string) => {
     setToken(newToken);
     localStorage.setItem('token', newToken);
-
-    try {
-      const decoded = jwtDecode<UserData>(newToken);
-      setUserData(decoded);
-      setIsAdmin(!!decoded.isAdmin);
-    } catch (error) {
-      console.error('Error decoding token after login:', error);
-      setUserData(null);
-      setIsAdmin(false);
-    }
+    setIsAdminVerified(false); // Reset admin verification on login
   };
 
   const logout = () => {
     setToken(null);
     setUserData(null);
     setIsAdmin(false);
+    setIsAdminVerified(false);
     localStorage.removeItem('token');
   };
 
@@ -97,7 +107,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         login,
         logout,
         isAuthenticated: !!token,
-        isAdmin,
+        isAdmin: isAdminVerified ? isAdmin : false,
         checkAdminStatus,
       }}
     >
@@ -106,10 +116,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   );
 };
 
-export const useAuth = () => {
+const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
 };
+
+export { AuthProvider, useAuth };

@@ -1,8 +1,9 @@
-import { Router } from "express";
 import bcrypt from "bcrypt";
+import { Router } from "express";
 import jwt from "jsonwebtoken";
-import { prisma } from "../lib/prisma";
 import { z } from "zod";
+import { prisma } from "../lib/prisma";
+import { authenticateToken, AuthRequest } from "../middleware/auth";
 
 const router = Router();
 
@@ -29,14 +30,14 @@ router.post("/register", async (req, res) => {
     // Validate input
     const validationResult = registerSchema.safeParse(req.body);
     if (!validationResult.success) {
-      return res.status(400).json({ 
-        error: "Invalid input", 
-        details: validationResult.error.issues 
+      return res.status(400).json({
+        error: "Invalid input",
+        details: validationResult.error.issues,
       });
     }
 
     const { email, password, name } = validationResult.data;
-    
+
     // Check if JWT_SECRET is set
     if (!JWT_SECRET) {
       return res.status(500).json({ error: "Server configuration error" });
@@ -63,17 +64,17 @@ router.post("/register", async (req, res) => {
     const token = jwt.sign(
       { id: user.id, email: user.email, isAdmin: user.isAdmin },
       JWT_SECRET,
-      { expiresIn: '24h' }
+      { expiresIn: "24h" }
     );
-    
-    res.json({ 
+
+    res.json({
       token,
       user: {
         id: user.id,
         email: user.email,
         name: user.name,
-        isAdmin: user.isAdmin
-      }
+        isAdmin: user.isAdmin,
+      },
     });
   } catch (error) {
     console.error("Registration error:", error);
@@ -86,14 +87,14 @@ router.post("/login", async (req, res) => {
     // Validate input
     const validationResult = loginSchema.safeParse(req.body);
     if (!validationResult.success) {
-      return res.status(400).json({ 
-        error: "Invalid input", 
-        details: validationResult.error.issues 
+      return res.status(400).json({
+        error: "Invalid input",
+        details: validationResult.error.issues,
       });
     }
 
     const { email, password } = validationResult.data;
-    
+
     // Check if JWT_SECRET is set
     if (!JWT_SECRET) {
       return res.status(500).json({ error: "Server configuration error" });
@@ -114,21 +115,62 @@ router.post("/login", async (req, res) => {
     const token = jwt.sign(
       { id: user.id, email: user.email, isAdmin: user.isAdmin },
       JWT_SECRET,
-      { expiresIn: '24h' }
+      { expiresIn: "24h" }
     );
-    
-    res.json({ 
+
+    res.json({
       token,
       user: {
         id: user.id,
         email: user.email,
         name: user.name,
-        isAdmin: user.isAdmin
-      }
+        isAdmin: user.isAdmin,
+      },
     });
   } catch (error) {
     console.error("Login error:", error);
     res.status(500).json({ error: "Server error during login" });
+  }
+});
+
+router.post("/refresh", authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    if (!JWT_SECRET) {
+      return res.status(500).json({ error: "Server configuration error" });
+    }
+
+    // Get fresh user data from database
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+    });
+
+    if (!user) {
+      return res.status(401).json({ error: "User not found" });
+    }
+
+    // Create new token
+    const token = jwt.sign(
+      { id: user.id, email: user.email, isAdmin: user.isAdmin },
+      JWT_SECRET,
+      { expiresIn: "24h" }
+    );
+
+    res.json({
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        isAdmin: user.isAdmin,
+      },
+    });
+  } catch (error) {
+    console.error("Token refresh error:", error);
+    res.status(500).json({ error: "Failed to refresh token" });
   }
 });
 

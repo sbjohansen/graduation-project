@@ -10,6 +10,7 @@ import Dashboard from './pages/Dashboard';
 import Drills from './pages/Drills';
 import Home from './pages/Home';
 import Instructions from './pages/Instructions';
+import Contact from './pages/Contact';
 
 function App() {
   return (
@@ -87,6 +88,7 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route path="/contact" element={<Contact />} />
         </Routes>
       </Layout>
     </ThemeProvider>

@@ -35,6 +35,11 @@ export function Header() {
                   Drills
                 </Button>
               </Link>
+              <Link to="/contact">
+                <Button variant="ghost" className="text-foreground">
+                  Contact
+                </Button>
+              </Link>
             </>
           )}
           <Link to="/about">

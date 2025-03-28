@@ -1,33 +1,21 @@
 import { AdminStats as AdminStatsType, UserData } from '@/types';
+import { Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AdminAlerts from '../components/admin/AdminAlerts';
 import AdminStats from '../components/admin/AdminStats';
-import LoadingState from '../components/admin/LoadingState';
 import UserManagementTable from '../components/admin/UserManagementTable';
 import { PageTitle } from '../components/PageTitle';
 import { useAuth } from '../contexts/AuthContext';
 
 const Admin = () => {
-  const { token, checkAdminStatus } = useAuth();
+  const { token } = useAuth();
   const navigate = useNavigate();
   const [adminMessage, setAdminMessage] = useState<string | null>(null);
   const [users, setUsers] = useState<UserData[]>([]);
   const [stats, setStats] = useState<AdminStatsType | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-
-  // Verify admin status on component mount
-  useEffect(() => {
-    const verifyAdmin = async () => {
-      const isAdmin = await checkAdminStatus();
-      if (!isAdmin) {
-        navigate('/');
-      }
-    };
-
-    verifyAdmin();
-  }, [checkAdminStatus, navigate]);
 
   // Fetch admin panel data
   useEffect(() => {
@@ -82,10 +70,6 @@ const Admin = () => {
       } catch (err) {
         console.error('Admin data fetch error:', err);
         setError(err instanceof Error ? err.message : 'Failed to load admin data');
-        // If authentication failed, redirect
-        if (err instanceof Error && err.message.includes('admin access')) {
-          navigate('/');
-        }
       } finally {
         setLoading(false);
       }
@@ -94,7 +78,7 @@ const Admin = () => {
     if (token) {
       fetchAdminData();
     }
-  }, [token, navigate]);
+  }, [token]);
 
   // Handle toggling user admin status
   const handleToggleAdmin = async (userId: number, currentStatus: boolean) => {
@@ -139,7 +123,10 @@ const Admin = () => {
         <h1 className="text-3xl font-bold mb-6">Admin Dashboard</h1>
         <AdminAlerts error={error} adminMessage={adminMessage} />
         {loading ? (
-          <LoadingState />
+          <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <p className="text-lg text-muted-foreground">Loading admin panel...</p>
+          </div>
         ) : (
           <>
             <AdminStats stats={stats} />
