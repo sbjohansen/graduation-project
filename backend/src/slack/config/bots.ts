@@ -10,6 +10,8 @@ export const botConfigs: BotConfig[] = [
     role: "system",
     personality: "professional",
     avatar: process.env.CS_BOT_AVATAR || "",
+    description:
+      "A professional system bot focused on maintaining order and providing consistent support across the platform.",
   },
   {
     id: "hanna",
@@ -20,6 +22,8 @@ export const botConfigs: BotConfig[] = [
     role: "incident_responder",
     personality: "analytical",
     avatar: process.env.HANNA_BOT_AVATAR || "",
+    description:
+      "An analytical incident response specialist who excels at breaking down complex security issues and coordinating effective responses.",
   },
   {
     id: "john",
@@ -30,16 +34,20 @@ export const botConfigs: BotConfig[] = [
     role: "security_analyst",
     personality: "methodical",
     avatar: process.env.JOHN_BOT_AVATAR || "",
+    description:
+      "A methodical security analyst who approaches threats with systematic precision and thorough investigation.",
   },
   {
-    id: "tom",
-    name: "Tom",
-    botToken: process.env.TOM_BOT_TOKEN || "",
-    signingSecret: process.env.TOM_BOT_SIGNING_SECRET || "",
-    appToken: process.env.TOM_BOT_APP_TOKEN || "",
-    role: "system_admin",
-    personality: "technical",
-    avatar: process.env.TOM_BOT_AVATAR || "",
+    id: "pete",
+    name: "Pete Mitchel",
+    botToken: process.env.PETE_BOT_TOKEN || "",
+    signingSecret: process.env.PETE_BOT_SIGNING_SECRET || "",
+    appToken: process.env.PETE_BOT_APP_TOKEN || "",
+    role: "ceo",
+    personality: "business",
+    avatar: process.env.PETE_BOT_AVATAR || "",
+    description:
+      "A business-oriented CEO bot focused on strategic decision-making and maintaining organizational vision.",
   },
   {
     id: "peter",
@@ -50,6 +58,8 @@ export const botConfigs: BotConfig[] = [
     role: "network_engineer",
     personality: "detail-oriented",
     avatar: process.env.PETER_BOT_AVATAR || "",
+    description:
+      "A detail-oriented network engineer who ensures robust infrastructure and optimal network performance.",
   },
   {
     id: "mike",
@@ -60,6 +70,8 @@ export const botConfigs: BotConfig[] = [
     role: "security_engineer",
     personality: "proactive",
     avatar: process.env.MIKE_BOT_AVATAR || "",
+    description:
+      "A proactive security engineer who anticipates threats and implements preventive measures to protect systems.",
   },
   {
     id: "lazar",
@@ -67,8 +79,10 @@ export const botConfigs: BotConfig[] = [
     botToken: process.env.LAZAR_BOT_TOKEN || "",
     signingSecret: process.env.LAZAR_BOT_SIGNING_SECRET || "",
     appToken: process.env.LAZAR_BOT_APP_TOKEN || "",
-    role: "threat_hunter",
+    role: "software_engineer",
     personality: "investigative",
     avatar: process.env.LAZAR_BOT_AVATAR || "",
+    description:
+      "An investigative software engineer who digs deep into code issues and develops innovative solutions.",
   },
 ];

@@ -7,6 +7,7 @@ export interface BotConfig {
   role: string;
   personality?: string;
   avatar?: string;
+  description?: string;
 }
 
 export interface BotInstance {
