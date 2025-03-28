@@ -36,19 +36,33 @@ export const DrillCard = ({ drill }: DrillCardProps) => {
   const handleStartDrill = async () => {
     try {
       setIsLoading(true);
-      const channelInfo = await slackService.createDrillChannels(drill.id);
+      toast.info('Starting drill...', {
+        description: 'Creating Slack channels and initializing scenario. This may take a moment.',
+      });
 
-      toast.success('Drill Started', {
-        description: `You have been invited to two Slack channels:
-          - ${channelInfo.businessChannelName}
-          - ${channelInfo.incidentChannelName}
+      // The drill ID from the backend may already be in the format "drill-1"
+      // If not, we need to use it as is
+      const scenarioId = drill.id.includes('drill-') ? drill.id : `drill-${drill.id}`;
+
+      const channelInfo = await slackService.createDrillChannels(scenarioId);
+
+      toast.success('Drill Started Successfully', {
+        description: `Scenario "${drill.name}" has been started.
           
-          Please check your Slack workspace to join the channels.`,
+          You have been invited to two Slack channels:
+          - ${channelInfo.businessChannelName} (for business communication)
+          - ${channelInfo.incidentChannelName} (for technical response)
+          
+          Please check your Slack workspace to join the channels and begin the drill.`,
+        duration: 8000,
       });
     } catch (error) {
       console.error('Error starting drill:', error);
       toast.error('Failed to start the drill', {
-        description: 'Please try again.',
+        description:
+          error instanceof Error
+            ? error.message
+            : 'Please try again or contact support if the issue persists.',
       });
     } finally {
       setIsLoading(false);

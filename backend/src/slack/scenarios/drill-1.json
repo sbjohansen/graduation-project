@@ -1,270 +1,155 @@
 {
-  "scenarioId": "jeffs-big-day-scenario-extended",
-  "scenarioTitle": "Jeff’s Big Day!",
-  "scenarioDescription": "Jeff (CEO) has secured premium merchandise and a partnership with a top influencer for a major product launch. However, mysterious issues threaten to derail the event. You must manage both the business-side communication and technical incident response to uncover and resolve the problem quickly.",
+  "scenarioId": "drill-1",
+  "scenarioTitle": "Jeff's Big Day!",
+  "scenarioDescription": "Handle a cybersecurity incident during a major product launch.",
   "steps": [
     {
       "stepNumber": 1,
-      "stepTitle": "Sudden Complaints",
-      "stepDescription": "Customers and internal staff begin reporting website glitches. Transactions are failing, leaving everyone alarmed on launch day.",
+      "stepTitle": "Initial Alert",
+      "stepDescription": "You receive an alert about suspicious activity on your company's web servers during the launch of a major product.",
       "objectives": [
-        "Acknowledge the incoming complaints",
-        "Alert team members that a potential incident is developing"
+        "Acknowledge the alert",
+        "Inform the business team that you're investigating"
       ],
       "hints": [
-        "Ask your network or security specialists to review logs if you suspect abnormal traffic",
-        "Keep the business side informed without causing undue panic"
+        "Respond in both channels",
+        "Keep the business side calm but informed"
       ],
       "isFulfilled": false,
       "botMessages": [
         {
           "from": "pete",
-          "role": "ceo",
-          "channel": "business",
-          "message": "Hey team, hearing about random checkout failures. This can't happen during our big launch. Any news?"
+          "role": "Security Analyst",
+          "channel": "incident",
+          "message": "Seeing odd traffic spikes on the servers. Site performance is dropping. Not great timing for Jeff’s launch."
         },
         {
           "from": "hanna",
-          "role": "incident_responder",
-          "channel": "incident",
-          "message": "Let's open an incident channel for this. We need logs, metrics—anything that can point us in the right direction."
+          "role": "Marketing Director",
+          "channel": "business",
+          "message": "Big day today! We have press and customers all over the site. Let me know if you need help from marketing."
+        },
+        {
+          "from": "john",
+          "role": "CEO",
+          "channel": "business",
+          "message": "This launch is huge for us. Keep me posted on any performance issues."
         }
       ]
     },
     {
       "stepNumber": 2,
-      "stepTitle": "Strange Traffic Patterns",
-      "stepDescription": "Initial checks reveal unusually high inbound traffic from sources you can’t immediately identify. The site is under strain, impacting user experience.",
+      "stepTitle": "Investigation",
+      "stepDescription": "Investigate the nature of the suspicious activity and determine if it's an attack.",
       "objectives": [
-        "Identify anomalies in traffic volume or patterns",
-        "Assign a specific person to begin deeper analysis (Network or Security)"
+        "Check server logs",
+        "Identify the type of potential attack",
+        "Report findings to the incident team"
       ],
       "hints": [
-        "Compare typical traffic to current levels in your monitoring tools",
-        "Consider whether the influencer partnership might have driven unexpected traffic… or if it’s something else"
+        "Look for suspicious request patterns",
+        "Consider common attack vectors"
       ],
       "isFulfilled": false,
       "botMessages": [
         {
-          "from": "peter",
-          "role": "network_engineer",
-          "channel": "incident",
-          "message": "I'm seeing a huge spike in requests from questionable IPs. Looks like more than just influencer hype."
-        },
-        {
-          "from": "john",
-          "role": "security_analyst",
-          "channel": "incident",
-          "message": "I’ll cross-check these IPs with threat intel feeds. Let’s see if they’re known malicious actors or just bots."
-        },
-        {
           "from": "pete",
-          "role": "ceo",
+          "role": "Security Analyst",
+          "channel": "incident",
+          "message": "Pulled some logs. We have a surge of requests hitting checkout and the product page. Looks off. Thoughts?"
+        },
+        {
+          "from": "hanna",
+          "role": "Marketing Director",
           "channel": "business",
-          "message": "Need a quick update for our influencer partner. Site performance is crucial for them."
+          "message": "Lots of social buzz, but I'm hearing from some users they're hitting slow pages. Any update on that?"
         }
       ]
     },
     {
       "stepNumber": 3,
-      "stepTitle": "Escalation & Triage",
-      "stepDescription": "The problem escalates; social media users complain. The business team grows anxious, while your technical staff tries to coordinate a response plan.",
+      "stepTitle": "DDoS Confirmation",
+      "stepDescription": "Confirm that the company is experiencing a DDoS attack and take initial mitigation steps.",
       "objectives": [
-        "Mark the incident as high severity or critical",
-        "Establish a formal communication pipeline between business and incident channels"
+        "Confirm the DDoS attack",
+        "Implement initial traffic filtering",
+        "Provide a status update to the business team"
       ],
       "hints": [
-        "Make sure Pete (CEO) and other business stakeholders receive consistent updates",
-        "Set up or confirm an incident triage process with Hanna (Incident Responder) leading"
+        "Leverage your CDN or firewall for quick filtering",
+        "Reassure the business channel but be honest"
       ],
       "isFulfilled": false,
       "botMessages": [
         {
-          "from": "pete",
-          "role": "ceo",
-          "channel": "business",
-          "message": "We’re definitely losing sales. I’ll be on standby for any approvals you need. Just keep me updated!"
+          "from": "mike",
+          "role": "Network Engineer",
+          "channel": "incident",
+          "message": "Seeing 10x normal traffic from random IPs. Looks like a botnet. We need to block or throttle."
         },
         {
-          "from": "hanna",
-          "role": "incident_responder",
-          "channel": "incident",
-          "message": "Let’s officially declare a critical incident. We’ll update the business channel with new developments every 15 minutes."
+          "from": "john",
+          "role": "CEO",
+          "channel": "business",
+          "message": "Demo starts soon. The site must stay online. What's our status?"
         }
       ]
     },
     {
       "stepNumber": 4,
-      "stepTitle": "Cross-Team Coordination",
-      "stepDescription": "Clarify roles and ensure everyone has what they need. The business team expects a timeline for resolution, while the technical team divides tasks (network checks, security checks, software reviews).",
+      "stepTitle": "Full Response",
+      "stepDescription": "Implement a complete DDoS mitigation strategy while keeping the business updated.",
       "objectives": [
-        "Assign tasks to each relevant team member (network, security, software)",
-        "Reassure business stakeholders with a rough timeline or plan"
+        "Activate DDoS protection service",
+        "Set up traffic monitoring",
+        "Communicate mitigation plan to stakeholders"
       ],
       "hints": [
-        "Ask each engineer about their area of expertise before assigning tasks",
-        "Provide a ballpark estimate of how long investigating each angle might take"
-      ],
-      "isFulfilled": false,
-      "botMessages": [
-        {
-          "from": "mike",
-          "role": "security_engineer",
-          "channel": "incident",
-          "message": "I can focus on potential malicious infiltration. Let me know if you want me to lock down anything specifically."
-        },
-        {
-          "from": "lazar",
-          "role": "software_engineer",
-          "channel": "incident",
-          "message": "The code deploy logs look clean, but I'm ready to patch anything if we find a vulnerability."
-        },
-        {
-          "from": "pete",
-          "role": "ceo",
-          "channel": "business",
-          "message": "When can I tell the influencer we’re stable again? They want to post in the next hour."
-        }
-      ]
-    },
-    {
-      "stepNumber": 5,
-      "stepTitle": "Containment Actions",
-      "stepDescription": "Early mitigations begin, such as blocking or throttling suspicious traffic. You must avoid impacting legitimate customers while the team narrows the source of the problem.",
-      "objectives": [
-        "Implement traffic filtering or blocking measures",
-        "Monitor site performance to ensure real users aren’t overly affected"
-      ],
-      "hints": [
-        "Work with Peter (network) on firewall rules, and John (security) on IP blacklists",
-        "Keep the business channel posted if partial downtime or maintenance mode is necessary"
+        "Use specialized DDoS protection or a cloud service",
+        "Provide rough resolution times in business channel"
       ],
       "isFulfilled": false,
       "botMessages": [
         {
           "from": "peter",
-          "role": "network_engineer",
+          "role": "CTO",
           "channel": "incident",
-          "message": "Applying rate limits on suspicious IP ranges. Let’s see how it impacts overall performance."
+          "message": "Is our DDoS service fully active? We should also enable more robust monitoring."
         },
         {
-          "from": "pete",
-          "role": "ceo",
+          "from": "hanna",
+          "role": "Marketing Director",
           "channel": "business",
-          "message": "Any chance we’ll go offline briefly? Let us know so I can inform our partners."
+          "message": "Jeff’s live demo just froze. People are asking what's up. We need a quick statement."
         }
       ]
     },
     {
-      "stepNumber": 6,
-      "stepTitle": "Deep-Dive Investigation",
-      "stepDescription": "With initial containment in place, the team can dig deeper into logs. They suspect a deliberate attack—though they’re not fully certain yet.",
+      "stepNumber": 5,
+      "stepTitle": "Resolution and Recovery",
+      "stepDescription": "Successfully mitigate the attack and prepare a post-incident report.",
       "objectives": [
-        "Correlate logs from network, security, and software to pinpoint the issue",
-        "Decide on any advanced remediation if you find clear malicious behavior"
+        "Confirm attack mitigation",
+        "Document the incident",
+        "Recommend prevention measures"
       ],
       "hints": [
-        "Look for repeated patterns (user-agents, request types, consistent timestamps)",
-        "Confirm if your containment steps stopped the bulk of suspicious traffic"
+        "Share final metrics on the attack and how it was stopped",
+        "Plan for future protection"
       ],
       "isFulfilled": false,
       "botMessages": [
-        {
-          "from": "john",
-          "role": "security_analyst",
-          "channel": "incident",
-          "message": "Getting strong signs of automated requests. Probably a targeted attempt to overwhelm us."
-        },
         {
           "from": "mike",
-          "role": "security_engineer",
+          "role": "Network Engineer",
           "channel": "incident",
-          "message": "I recommend we escalate to the hosting provider if the attack patterns shift. They can help with deeper mitigation."
-        }
-      ]
-    },
-    {
-      "stepNumber": 7,
-      "stepTitle": "Recovery Validation & Communication",
-      "stepDescription": "Early results show improvement. You must confirm legitimate traffic can flow normally, while also briefing the business channel on partial success.",
-      "objectives": [
-        "Verify that genuine users can access the site normally",
-        "Provide a succinct update in the business channel"
-      ],
-      "hints": [
-        "Ask a few test users or QA folks to attempt purchases",
-        "Keep the CEO posted on approximate resolution timelines"
-      ],
-      "isFulfilled": false,
-      "botMessages": [
-        {
-          "from": "pete",
-          "role": "ceo",
-          "channel": "business",
-          "message": "Sales are slowly recovering. Great work so far. Any official statement we can share?"
+          "message": "Traffic is normalizing. Let's note what worked and what didn't."
         },
-        {
-          "from": "cs-bot",
-          "role": "system",
-          "channel": "incident",
-          "message": "Badge check: If the user consistently provided prompt updates in #business, consider awarding the 'Great Communicator' badge."
-        }
-      ]
-    },
-    {
-      "stepNumber": 8,
-      "stepTitle": "Stabilization & Discovery",
-      "stepDescription": "Most malicious traffic has subsided or been filtered out, returning performance to near-normal. You suspect a targeted disruption. Collect more evidence, confirm final stability, and keep all channels in sync.",
-      "objectives": [
-        "Ensure site stability is close to 100%",
-        "Gather any final forensic data to confirm the nature of the incident"
-      ],
-      "hints": [
-        "Double-check for residual suspicious requests or newly rotating IP ranges",
-        "Update the business channel about near-normal operations"
-      ],
-      "isFulfilled": false,
-      "botMessages": [
         {
           "from": "john",
-          "role": "security_analyst",
-          "channel": "incident",
-          "message": "We have a trove of log data that strongly suggests a coordinated malicious campaign."
-        },
-        {
-          "from": "lazar",
-          "role": "software_engineer",
-          "channel": "incident",
-          "message": "No code-level bugs found. This was definitely external traffic, not a glitch from our last deploy."
-        }
-      ]
-    },
-    {
-      "stepNumber": 9,
-      "stepTitle": "Post-Incident Review & Badge Awards",
-      "stepDescription": "With operations stable, you create a final incident report, share key learnings with the business, and potentially earn recognition for exceptional communication or problem-solving.",
-      "objectives": [
-        "Conclude the incident formally and provide a summary to stakeholders",
-        "Reflect on lessons learned, propose preventative measures",
-        "Award any badges for outstanding performance"
-      ],
-      "hints": [
-        "Document a timeline from initial complaint to final fix",
-        "Suggest improvements to monitoring, capacity, or a formal DoS playbook"
-      ],
-      "isFulfilled": false,
-      "botMessages": [
-        {
-          "from": "pete",
-          "role": "ceo",
+          "role": "CEO",
           "channel": "business",
-          "message": "We should do a recap to see how we can handle such situations faster next time."
-        },
-        {
-          "from": "cs-bot",
-          "role": "system",
-          "channel": "incident",
-          "message": "If the user’s quick mitigation steps or unique solutions were critical, consider awarding the 'Innovative Problem-Solver' badge now."
+          "message": "Site's back, but the launch took a hit. I need a full report on how we'll prevent this going forward."
         }
       ]
     }
