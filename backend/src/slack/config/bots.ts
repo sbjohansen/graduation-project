@@ -11,7 +11,7 @@ export const botConfigs: BotConfig[] = [
     personality: "professional",
     avatar: process.env.CS_BOT_AVATAR || "",
     description:
-      "A professional system bot focused on maintaining order and providing consistent support across the platform.",
+      "Facilitates the drill, provides introductory messages, and potentially narrative summaries. Remains neutral and professional. Communicates system messages or drill instructions in both channels as needed.",
   },
   {
     id: "hanna",
@@ -23,7 +23,7 @@ export const botConfigs: BotConfig[] = [
     personality: "analytical",
     avatar: process.env.HANNA_BOT_AVATAR || "",
     description:
-      "An analytical incident response specialist who excels at breaking down complex security issues and coordinating effective responses.",
+      "Coordinates the overall incident response. Focuses on process, communication, and ensuring objectives are met. Analytical and calm under pressure. Speaks clearly, often summarizes situations, and delegates tasks. Primary communicator in the business channel for technical updates.",
   },
   {
     id: "john",
@@ -35,7 +35,7 @@ export const botConfigs: BotConfig[] = [
     personality: "methodical",
     avatar: process.env.JOHN_BOT_AVATAR || "",
     description:
-      "A methodical security analyst who approaches threats with systematic precision and thorough investigation.",
+      "Deep-dives into logs, threat intelligence, and system data. Identifies patterns, indicators of compromise (IoCs), and the nature of threats. Methodical and data-driven. Speaks precisely, often referencing specific data points or log entries. Primarily communicates technical findings in the incident channel.",
   },
   {
     id: "pete",
@@ -47,7 +47,7 @@ export const botConfigs: BotConfig[] = [
     personality: "business",
     avatar: process.env.PETE_BOT_AVATAR || "",
     description:
-      "A business-oriented CEO bot focused on strategic decision-making and maintaining organizational vision.",
+      "Represents business interests. Focuses on impact (financial, reputational), customer experience, and resolution time. Needs clear, concise updates on status and ETA. Communicates decisively, often asking for timelines and business impact assessments. Primarily communicates in the business channel.",
   },
   {
     id: "peter",
@@ -59,7 +59,7 @@ export const botConfigs: BotConfig[] = [
     personality: "detail-oriented",
     avatar: process.env.PETER_BOT_AVATAR || "",
     description:
-      "A detail-oriented network engineer who ensures robust infrastructure and optimal network performance.",
+      "Manages network infrastructure, including firewalls, load balancers, and connectivity. Focuses on traffic flow, network performance, and implementing network-level mitigations (e.g., IP blocks, rate limiting). Detail-oriented and pragmatic. Communicates technical network details and solutions in the incident channel.",
   },
   {
     id: "mike",
@@ -71,7 +71,7 @@ export const botConfigs: BotConfig[] = [
     personality: "proactive",
     avatar: process.env.MIKE_BOT_AVATAR || "",
     description:
-      "A proactive security engineer who anticipates threats and implements preventive measures to protect systems.",
+      "Implements and manages security tools like WAFs, IDS/IPS, and endpoint security. Focuses on configuring defenses, applying patches, and containing threats at the system level. Proactive and solution-oriented. Communicates specific technical actions and configurations in the incident channel.",
   },
   {
     id: "lazar",
@@ -83,6 +83,6 @@ export const botConfigs: BotConfig[] = [
     personality: "investigative",
     avatar: process.env.LAZAR_BOT_AVATAR || "",
     description:
-      "An investigative software engineer who digs deep into code issues and develops innovative solutions.",
+      "Understands the application code, databases, and dependencies. Investigates application-level errors, performance bottlenecks, and potential code vulnerabilities exploited during an incident. Investigative and problem-solving oriented. Communicates findings related to code or application behavior in the incident channel.",
   },
 ];

@@ -43,13 +43,12 @@ export class MessageHandler {
     // CRITICAL: Subscribe to ALL message events with more verbose debugging
     app.message(/.*/, async ({ message, say }) => {
       try {
+        // --- START DEBUG LOG ---
         console.log(
-          "[MESSAGE_TRACKER] ===== MESSAGE HANDLER TRIGGERED (app.message) ====="
-        );
-        console.log(
-          "[MESSAGE_TRACKER] Received message event (via app.message):",
+          "[DEBUG] app.message handler triggered for message: ",
           JSON.stringify(message, null, 2)
         );
+        // --- END DEBUG LOG ---
 
         // Debug more detailed message source information
         console.log(
@@ -63,9 +62,9 @@ export class MessageHandler {
 
         // Skip messages from bots and messages with subtypes
         if ("bot_id" in message || message.subtype) {
-          console.log(
-            "[MESSAGE_TRACKER] Ignoring bot message or message with subtype"
-          );
+          // console.log(
+          //   "[MESSAGE_TRACKER] Ignoring bot message or message with subtype"
+          // );
           return;
         }
 
@@ -89,15 +88,20 @@ export class MessageHandler {
             const messageTs = message.ts as string;
             const text = message.text as string;
 
-            // Check if this message has already been processed
             const { botManager } = require("./services/botManager");
-            if (
-              botManager.hasProcessedMessage(channelId, userId, messageTs, text)
-            ) {
-              console.log(
-                `[MESSAGE_TRACKER] Skipping already processed message with ts=${messageTs}`
-              );
-              return;
+            const alreadyProcessed = botManager.hasProcessedMessage(
+              channelId,
+              userId,
+              messageTs,
+              text
+            );
+            // --- START DEBUG LOG ---
+            console.log(
+              `[DEBUG] hasProcessedMessage check for ts=${messageTs}: ${alreadyProcessed}`
+            );
+            // --- END DEBUG LOG ---
+            if (alreadyProcessed) {
+              return; // Skip if already processed
             }
           }
 
@@ -181,24 +185,27 @@ export class MessageHandler {
           !message.subtype
         ) {
           try {
-            // NOTE: We've already verified this message isn't a duplicate above,
-            // so we can safely process it now
-            console.log(
-              "[MESSAGE_TRACKER] Manual message forwarding activated"
-            );
             const { channelManager } = require("./services/channelManager");
             const channelInfo = channelManager.getChannelInfo(message.channel);
+            // --- START DEBUG LOG ---
+            console.log(
+              `[DEBUG] Looked up channel ${
+                message.channel
+              }. Found channelInfo: ${!!channelInfo}`
+            );
+            // --- END DEBUG LOG ---
 
             if (channelInfo) {
               const drillId = channelManager.findDrillIdByChannelId(
                 message.channel
               );
-              if (drillId) {
-                console.log(
-                  `[MESSAGE_TRACKER] Processing message for drill: ${drillId}`
-                );
+              // --- START DEBUG LOG ---
+              console.log(
+                `[DEBUG] Looked up drill ID for channel ${message.channel}. Found drillId: ${drillId}`
+              );
+              // --- END DEBUG LOG ---
 
-                // Get active scenarios to cross-reference
+              if (drillId) {
                 const activeScenarios =
                   this.scenarioService.getAllActiveScenarios();
                 const matchingScenario = activeScenarios.find(
@@ -206,334 +213,49 @@ export class MessageHandler {
                     s.businessChannelId === message.channel ||
                     s.incidentChannelId === message.channel
                 );
+                // --- START DEBUG LOG ---
+                console.log(
+                  `[DEBUG] Found matching scenario for channel ${
+                    message.channel
+                  }: ${!!matchingScenario}`
+                );
+                // --- END DEBUG LOG ---
 
                 if (matchingScenario) {
+                  // --- START DEBUG LOG ---
                   console.log(
-                    `[MESSAGE_TRACKER] Found matching scenario, manually forwarding message`
+                    `[DEBUG] >>> Calling scenarioService.processUserMessage for user ${matchingScenario.userId}`
                   );
+                  // --- END DEBUG LOG ---
                   await this.scenarioService.processUserMessage(
                     matchingScenario.userId,
                     message.channel as string,
                     message.text as string
                   );
-                } else {
+                  // --- START DEBUG LOG ---
                   console.log(
-                    `[MESSAGE_TRACKER] No matching active scenario found for channel ${message.channel}`
+                    `[DEBUG] <<< Returned from scenarioService.processUserMessage for user ${matchingScenario.userId}`
                   );
+                  // --- END DEBUG LOG ---
+                } else {
+                  // console.log(
+                  //   `[MESSAGE_TRACKER] No matching active scenario found for channel ${message.channel}`
+                  // );
                 }
               }
             }
           } catch (err) {
             console.error(
-              "[MESSAGE_TRACKER] Error in manual message forwarding:",
+              "[DEBUG] Error during message forwarding logic:", // Changed to DEBUG
               err
             );
           }
         }
       } catch (error) {
         console.error(
-          "[MESSAGE_TRACKER] Error in message wildcard handler:",
+          "[DEBUG] Error in app.message wildcard handler:", // Changed to DEBUG
           error
         );
-      }
-    });
-
-    // Listen for all events for debugging - expanded to include more event types
-    app.event(/.*/, async ({ event, client }) => {
-      try {
-        // Expanded list of relevant event types
-        const relevantEventTypes = [
-          "message",
-          "channel_created",
-          "member_joined_channel",
-          "message.channels",
-          "message.groups",
-          "app_mention",
-          "im_created",
-          "channel_rename",
-          "team_join",
-        ];
-
-        const eventType = event.type || "unknown";
-
-        // For message events, always log them
-        if (
-          eventType === "message" ||
-          (typeof eventType === "string" && eventType.startsWith("message."))
-        ) {
-          console.log("[MESSAGE_TRACKER] ===== MESSAGE EVENT TRIGGERED =====");
-          console.log(
-            `[MESSAGE_TRACKER] Received message event via app.event:`,
-            JSON.stringify(event, null, 2)
-          );
-
-          // Check for channel info
-          if ("channel" in event) {
-            try {
-              const { channelManager } = require("./services/channelManager");
-              const channelInfo = channelManager.getChannelInfo(event.channel);
-              if (channelInfo) {
-                console.log(
-                  `[MESSAGE_TRACKER] EVENT: Found channel info for ${event.channel}`
-                );
-                console.log(
-                  `[MESSAGE_TRACKER] Associated drill: ${channelManager.findDrillIdByChannelId(
-                    event.channel
-                  )}`
-                );
-              }
-            } catch (err) {
-              console.error(
-                "[MESSAGE_TRACKER] Error checking channel for event:",
-                err
-              );
-            }
-          }
-        }
-        // For other relevant events, log them
-        else if (relevantEventTypes.includes(eventType)) {
-          console.log(
-            `[MESSAGE_TRACKER] ===== EVENT HANDLER: ${eventType} =====`
-          );
-          console.log(
-            `[MESSAGE_TRACKER] Received ${eventType} event:`,
-            JSON.stringify(event, null, 2)
-          );
-        }
-      } catch (error) {
-        console.error(
-          "[MESSAGE_TRACKER] Error in global event handler:",
-          error
-        );
-      }
-    });
-
-    // Listen specifically for message events
-    app.event("message", async ({ event, client, say }) => {
-      try {
-        console.log(
-          "[MESSAGE_TRACKER] ===== MESSAGE EVENT HANDLER TRIGGERED =====",
-          new Date().toISOString()
-        );
-        console.log(
-          "[MESSAGE_TRACKER] Received message event:",
-          JSON.stringify(event, null, 2)
-        );
-
-        // Ignore bot messages and messages with subtypes
-        if ("bot_id" in event || event.subtype) {
-          console.log(
-            "[MESSAGE_TRACKER] Ignoring bot message or message with subtype"
-          );
-          return;
-        }
-
-        const channelId = event.channel;
-
-        // Make sure we have user and text properties
-        if (!("user" in event) || !("text" in event)) {
-          console.log(
-            "[MESSAGE_TRACKER] Ignoring message without user or text properties"
-          );
-          return;
-        }
-
-        const userId = event.user as string;
-        const text = event.text as string;
-        const messageTs = event.ts as string;
-
-        // Check if this message has already been processed using the botManager
-        const { botManager } = require("./services/botManager");
-        if (
-          botManager.hasProcessedMessage(channelId, userId, messageTs, text)
-        ) {
-          console.log(
-            `[MESSAGE_TRACKER] Skipping already processed message with ts=${messageTs}`
-          );
-          return;
-        }
-
-        console.log(
-          `[MESSAGE_TRACKER] Processing message from user ${userId} in channel ${channelId}: "${text}"`
-        );
-
-        // Update channel activity to help with adaptive polling
-        try {
-          botManager.updateChannelActivity(channelId);
-        } catch (err) {
-          console.error(
-            "[MESSAGE_TRACKER] Error updating channel activity:",
-            err
-          );
-        }
-
-        // Debug channel info
-        try {
-          const { channelManager } = require("./services/channelManager");
-          console.log(
-            `[MESSAGE_TRACKER] Checking channel cache for channel ${channelId}`
-          );
-          const channelInfo = channelManager.getChannelInfo(channelId);
-
-          if (channelInfo) {
-            console.log(`[MESSAGE_TRACKER] Found channel in cache`);
-            console.log(
-              `[MESSAGE_TRACKER] Business channel ID: ${channelInfo.businessChannelId}`
-            );
-            console.log(
-              `[MESSAGE_TRACKER] Incident channel ID: ${channelInfo.incidentChannelId}`
-            );
-          } else {
-            console.log(`[MESSAGE_TRACKER] Channel not found in cache`);
-
-            // Debug channel info from Slack API
-            try {
-              const csBot = require("./services/botManager").botManager.getBot(
-                "cs-bot"
-              );
-              if (csBot) {
-                console.log(
-                  `[MESSAGE_TRACKER] Fetching channel info from Slack API`
-                );
-                const channelInfo = await csBot.app.client.conversations.info({
-                  channel: channelId,
-                });
-
-                if (channelInfo.ok) {
-                  console.log(`[MESSAGE_TRACKER] Channel API info:`);
-                  console.log(`- Name: ${channelInfo.channel.name}`);
-                  console.log(
-                    `- Is Private: ${channelInfo.channel.is_private}`
-                  );
-                  console.log(`- Is Member: ${channelInfo.channel.is_member}`);
-                } else {
-                  console.log(
-                    `[MESSAGE_TRACKER] Failed to get channel API info: ${channelInfo.error}`
-                  );
-                }
-              }
-            } catch (err) {
-              console.error(
-                `[MESSAGE_TRACKER] Error fetching channel info from API:`,
-                err
-              );
-            }
-          }
-        } catch (err) {
-          console.error(`[MESSAGE_TRACKER] Error checking channel cache:`, err);
-        }
-
-        // Check if this is a message in an active scenario channel
-        const activeScenarios = this.scenarioService.getAllActiveScenarios();
-        console.log(
-          `[MESSAGE_TRACKER] Active scenarios: ${activeScenarios.length}`
-        );
-
-        if (activeScenarios.length > 0) {
-          console.log(
-            `[MESSAGE_TRACKER] Active scenario user IDs: ${activeScenarios
-              .map((s) => s.userId)
-              .join(", ")}`
-          );
-          console.log(
-            `[MESSAGE_TRACKER] Active scenario channel IDs: ${activeScenarios
-              .map(
-                (s) =>
-                  `business=${s.businessChannelId}, incident=${s.incidentChannelId}`
-              )
-              .join(" | ")}`
-          );
-        }
-
-        // First try to find by channel ID since that's more reliable
-        const relevantScenarioByChannel = activeScenarios.find(
-          (scenario) =>
-            scenario.businessChannelId === channelId ||
-            scenario.incidentChannelId === channelId
-        );
-
-        // Then try to find by user ID as a backup
-        const relevantScenarioByUser = activeScenarios.find(
-          (scenario) => scenario.userId === userId
-        );
-
-        let relevantScenario =
-          relevantScenarioByChannel || relevantScenarioByUser;
-
-        if (!relevantScenario) {
-          console.log(
-            `[MESSAGE_TRACKER] No active scenario found for channel ${channelId} or user ${userId}`
-          );
-
-          // Check all channels to see if there's any match
-          if (activeScenarios.length > 0) {
-            console.log("[MESSAGE_TRACKER] Checking channel matches manually:");
-            for (const scenario of activeScenarios) {
-              console.log(
-                `[MESSAGE_TRACKER] Comparing: business=${scenario.businessChannelId}==${channelId}, incident=${scenario.incidentChannelId}==${channelId}`
-              );
-              console.log(
-                `[MESSAGE_TRACKER] Match business: ${
-                  scenario.businessChannelId === channelId
-                }`
-              );
-              console.log(
-                `[MESSAGE_TRACKER] Match incident: ${
-                  scenario.incidentChannelId === channelId
-                }`
-              );
-            }
-          }
-
-          // Last attempt - try to respond directly in this channel
-          try {
-            await say(
-              `[DEBUG] I received your message but couldn't find an active scenario for this channel. Channel ID: ${channelId}`
-            );
-          } catch (err) {
-            console.error(
-              `[MESSAGE_TRACKER] Error sending debug response:`,
-              err
-            );
-          }
-
-          return;
-        }
-
-        console.log(
-          `[MESSAGE_TRACKER] Found relevant scenario for user ${relevantScenario.userId} (email: ${relevantScenario.userEmail})`
-        );
-        console.log(
-          `[MESSAGE_TRACKER] Channel match: Business=${
-            relevantScenario.businessChannelId === channelId
-          }, Incident=${relevantScenario.incidentChannelId === channelId}`
-        );
-
-        // Additional check to debug user ID mapping
-        if (relevantScenario.userId !== userId && relevantScenarioByChannel) {
-          console.log(
-            `[MESSAGE_TRACKER] Warning: Message user ID (${userId}) doesn't match scenario user ID (${relevantScenario.userId})`
-          );
-          // Try to update the user ID mapping
-          console.log(
-            `[MESSAGE_TRACKER] Updating user ID from ${relevantScenario.userId} to ${userId}`
-          );
-          this.scenarioService.updateUserId(relevantScenario.userId, userId);
-
-          // Also update the scenario object's userId
-          relevantScenario.userId = userId;
-        }
-
-        // Process the message through the scenario service
-        console.log(`[MESSAGE_TRACKER] Sending message to processUserMessage`);
-        await this.scenarioService.processUserMessage(
-          relevantScenario.userId,
-          channelId,
-          text
-        );
-        console.log(`[MESSAGE_TRACKER] Message processing complete`);
-      } catch (error) {
-        console.error("[MESSAGE_TRACKER] Error handling message event:", error);
       }
     });
 
@@ -597,4 +319,5 @@ export class MessageHandler {
   }
 }
 
+// Create and export a single instance of MessageHandler
 export const messageHandler = new MessageHandler();

@@ -1,157 +1,47 @@
 {
   "scenarioId": "drill-1",
-  "scenarioTitle": "Jeff's Big Day!",
-  "scenarioDescription": "Handle a cybersecurity incident during a major product launch.",
-  "steps": [
+  "scenarioTitle": "Suspicious Email Reports",
+  "scenarioDescription": "Employees are reporting potentially malicious emails. Your job is to lead the incident response team to investigate the threat, contain the impact, and implement protective measures.",
+  "difficulty": "Easy",
+  "length": "Short",
+  "initialSituation": "John (Security Analyst) receives a forwarded email from an employee marked 'Suspicious - urgent look needed?'. The email appears to be from IT asking the user to click a link to verify their account due to recent 'unusual activity'. Shortly after, another similar report arrives from a different department, mentioning an attachment.",
+  "overallGoal": "Analyze the reported suspicious emails to confirm they are part of a phishing campaign. Identify the threat vector (malicious link/attachment, credential harvesting). Determine the scope (users affected). Warn employees. Implement technical mitigations (e.g., block sender/domain, flag external emails, analyze payload safely, update filters). Investigate and contain potential impact (check for compromised accounts/systems). Confirm threat containment and provide final guidance. Ensure the team lead (user) makes key decisions.",
+  "initialBotMessages": [
     {
-      "stepNumber": 1,
-      "stepTitle": "Initial Alert",
-      "stepDescription": "You receive an alert about suspicious activity on your company's web servers during the launch of a major product.",
-      "objectives": [
-        "Acknowledge the alert",
-        "Inform the business team that you're investigating"
-      ],
-      "hints": [
-        "Respond in both channels",
-        "Keep the business side calm but informed"
-      ],
-      "isFulfilled": false,
-      "botMessages": [
-        {
-          "from": "pete",
-          "role": "Security Analyst",
-          "channel": "incident",
-          "message": "Seeing odd traffic spikes on the servers. Site performance is dropping. Not great timing for Jeff’s launch."
-        },
-        {
-          "from": "hanna",
-          "role": "Marketing Director",
-          "channel": "business",
-          "message": "Big day today! We have press and customers all over the site. Let me know if you need help from marketing."
-        },
-        {
-          "from": "john",
-          "role": "CEO",
-          "channel": "business",
-          "message": "This launch is huge for us. Keep me posted on any performance issues."
-        }
-      ]
+      "from": "cs-bot",
+      "role": "system",
+      "channel": "business",
+      "message": "Welcome to the Business Channel for the 'Suspicious Email Reports' drill."
     },
     {
-      "stepNumber": 2,
-      "stepTitle": "Investigation",
-      "stepDescription": "Investigate the nature of the suspicious activity and determine if it's an attack.",
-      "objectives": [
-        "Check server logs",
-        "Identify the type of potential attack",
-        "Report findings to the incident team"
-      ],
-      "hints": [
-        "Look for suspicious request patterns",
-        "Consider common attack vectors"
-      ],
-      "isFulfilled": false,
-      "botMessages": [
-        {
-          "from": "pete",
-          "role": "Security Analyst",
-          "channel": "incident",
-          "message": "Pulled some logs. We have a surge of requests hitting checkout and the product page. Looks off. Thoughts?"
-        },
-        {
-          "from": "hanna",
-          "role": "Marketing Director",
-          "channel": "business",
-          "message": "Lots of social buzz, but I'm hearing from some users they're hitting slow pages. Any update on that?"
-        }
-      ]
+      "from": "cs-bot",
+      "role": "system",
+      "channel": "incident",
+      "message": "Welcome to the Incident Channel for the 'Suspicious Email Reports' drill. Technical discussion here."
     },
     {
-      "stepNumber": 3,
-      "stepTitle": "DDoS Confirmation",
-      "stepDescription": "Confirm that the company is experiencing a DDoS attack and take initial mitigation steps.",
-      "objectives": [
-        "Confirm the DDoS attack",
-        "Implement initial traffic filtering",
-        "Provide a status update to the business team"
-      ],
-      "hints": [
-        "Leverage your CDN or firewall for quick filtering",
-        "Reassure the business channel but be honest"
-      ],
-      "isFulfilled": false,
-      "botMessages": [
-        {
-          "from": "mike",
-          "role": "Network Engineer",
-          "channel": "incident",
-          "message": "Seeing 10x normal traffic from random IPs. Looks like a botnet. We need to block or throttle."
-        },
-        {
-          "from": "john",
-          "role": "CEO",
-          "channel": "business",
-          "message": "Demo starts soon. The site must stay online. What's our status?"
-        }
-      ]
+      "from": "john",
+      "role": "security_analyst",
+      "channel": "incident",
+      "message": "Received a forwarded email marked suspicious from Sales: [Subject: Urgent Account Verification Required]. Looks like a credential phishing attempt via a link. Starting analysis."
     },
     {
-      "stepNumber": 4,
-      "stepTitle": "Full Response",
-      "stepDescription": "Implement a complete DDoS mitigation strategy while keeping the business updated.",
-      "objectives": [
-        "Activate DDoS protection service",
-        "Set up traffic monitoring",
-        "Communicate mitigation plan to stakeholders"
-      ],
-      "hints": [
-        "Use specialized DDoS protection or a cloud service",
-        "Provide rough resolution times in business channel"
-      ],
-      "isFulfilled": false,
-      "botMessages": [
-        {
-          "from": "peter",
-          "role": "CTO",
-          "channel": "incident",
-          "message": "Is our DDoS service fully active? We should also enable more robust monitoring."
-        },
-        {
-          "from": "hanna",
-          "role": "Marketing Director",
-          "channel": "business",
-          "message": "Jeff’s live demo just froze. People are asking what's up. We need a quick statement."
-        }
-      ]
+      "from": "john",
+      "role": "security_analyst",
+      "channel": "incident",
+      "message": "Just got another report, this one from Marketing with [Subject: Updated HR Policy Document] and includes an attachment. Also looks suspicious. Investigating both."
     },
     {
-      "stepNumber": 5,
-      "stepTitle": "Resolution and Recovery",
-      "stepDescription": "Successfully mitigate the attack and prepare a post-incident report.",
-      "objectives": [
-        "Confirm attack mitigation",
-        "Document the incident",
-        "Recommend prevention measures"
-      ],
-      "hints": [
-        "Share final metrics on the attack and how it was stopped",
-        "Plan for future protection"
-      ],
-      "isFulfilled": false,
-      "botMessages": [
-        {
-          "from": "mike",
-          "role": "Network Engineer",
-          "channel": "incident",
-          "message": "Traffic is normalizing. Let's note what worked and what didn't."
-        },
-        {
-          "from": "john",
-          "role": "CEO",
-          "channel": "business",
-          "message": "Site's back, but the launch took a hit. I need a full report on how we'll prevent this going forward."
-        }
-      ]
+      "from": "hanna",
+      "role": "customer_care",
+      "channel": "business",
+      "message": "Hearing some worried chatter about unusual emails asking for logins or with strange attachments. Is this something widespread we need to address?"
+    },
+    {
+      "from": "pete",
+      "role": "ceo",
+      "channel": "business",
+      "message": "What's this about suspicious emails? Is company data or access at risk? John, Hanna - give me an assessment quickly."
     }
   ]
 }

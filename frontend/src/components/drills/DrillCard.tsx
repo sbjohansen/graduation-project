@@ -47,7 +47,7 @@ export const DrillCard = ({ drill }: DrillCardProps) => {
       const channelInfo = await slackService.createDrillChannels(scenarioId);
 
       toast.success('Drill Started Successfully', {
-        description: `Scenario "${drill.name}" has been started.
+        description: `Scenario "${drill.title}" has been started.
           
           You have been invited to two Slack channels:
           - ${channelInfo.businessChannelName} (for business communication)
@@ -73,7 +73,7 @@ export const DrillCard = ({ drill }: DrillCardProps) => {
     <Card className="h-full flex flex-col">
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle className="text-xl">{drill.name}</CardTitle>
+          <CardTitle className="text-xl">{drill.title}</CardTitle>
           <Badge variant="secondary" className={getDifficultyColor(drill.difficulty)}>
             {drill.difficulty}
           </Badge>
@@ -81,13 +81,9 @@ export const DrillCard = ({ drill }: DrillCardProps) => {
         <CardDescription>{drill.description}</CardDescription>
       </CardHeader>
       <CardContent className="flex-grow">
-        <div className="space-y-2">
-          <p className="text-sm text-muted-foreground">Duration: {drill.duration} minutes</p>
-          <p className="text-sm text-muted-foreground">Topics: {drill.topics.join(', ')}</p>
+        <div className="space-y-1">
+          <p className="text-sm text-muted-foreground">Length: {drill.length}</p>
         </div>
-        <Badge variant="outline" className="mt-2">
-          {drill.category}
-        </Badge>
       </CardContent>
       <CardFooter>
         <Button onClick={handleStartDrill} disabled={isLoading} className="w-full">

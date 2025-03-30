@@ -464,72 +464,135 @@ class ChannelManager {
       throw new Error("CS-Bot not found");
     }
 
-    console.log("Inviting all character bots to channels...");
+    console.log("[DEBUG] Inviting all bots (including cs-bot) to channels...");
 
     // Get all bots from bot manager
     const allBots = botManager.getAllBots();
 
-    // Skip cs-bot since it's already the creator
-    const botsToInvite = allBots.filter((bot) => bot.config.id !== "cs-bot");
+    // REMOVED FILTER: Invite cs-bot along with character bots
+    // const botsToInvite = allBots.filter((bot) => bot.config.id !== "cs-bot");
+    const botsToInvite = allBots; // Now includes cs-bot
 
     for (const bot of botsToInvite) {
       try {
         const botName = bot.config.name;
-        console.log(`Processing bot ${botName}`);
+        const botInternalId = bot.config.id;
+        console.log(
+          `[DEBUG] Processing invitation for bot ${botName} (${botInternalId})`
+        );
 
-        // Get bot user ID
-        try {
-          const botInfo = await bot.app.client.auth.test();
-          if (!botInfo.ok || !botInfo.user_id) {
+        // Get bot user ID (its Slack ID)
+        // Use the stored slackUserId if available, otherwise fetch via auth.test
+        let botSlackId = bot.slackUserId;
+        if (!botSlackId) {
+          console.warn(
+            `[DEBUG] Slack User ID not found directly for ${botName}. Attempting auth.test...`
+          );
+          try {
+            const botInfo = await bot.app.client.auth.test();
+            if (!botInfo.ok || !botInfo.user_id) {
+              console.warn(
+                `[DEBUG] Failed to get bot info via auth.test for ${botName}, skipping invitation.`
+              );
+              continue;
+            }
+            botSlackId = botInfo.user_id;
+          } catch (authErr) {
+            console.error(
+              `[DEBUG] Error during auth.test for ${botName}:`,
+              authErr
+            );
             console.warn(
-              `Failed to get bot info for ${botName}, skipping invitation`
+              `[DEBUG] Skipping invitation for ${botName} due to auth error.`
             );
             continue;
           }
+        }
 
-          const botUserId = botInfo.user_id;
-          console.log(`Inviting bot ${botName} (${botUserId}) to channels`);
+        // Skip if the bot being processed is the same as the inviting bot (cs-bot)
+        if (csBot.slackUserId && botSlackId === csBot.slackUserId) {
+          console.log(`[DEBUG] Skipping self-invite for ${botName}.`);
+          continue; // Move to the next bot in the loop
+        }
 
-          // Invite to business channel
-          try {
+        console.log(
+          `[DEBUG] Inviting bot ${botName} (Slack ID: ${botSlackId}) to channels`
+        );
+
+        // Invite to business channel using cs-bot's client
+        try {
+          const inviteBusinessResult =
             await csBot.app.client.conversations.invite({
               channel: businessChannelId,
-              users: botUserId,
+              users: botSlackId,
             });
-            console.log(`Successfully invited ${botName} to business channel`);
-          } catch (error) {
-            console.error(
-              `Error inviting ${botName} to business channel:`,
-              error
+          if (inviteBusinessResult.ok) {
+            console.log(
+              `[DEBUG] Successfully invited ${botName} to business channel ${businessChannelId}.`
             );
-          }
-
-          // Small delay between invites
-          await new Promise((resolve) => setTimeout(resolve, 500));
-
-          // Invite to incident channel
-          try {
-            await csBot.app.client.conversations.invite({
-              channel: incidentChannelId,
-              users: botUserId,
-            });
-            console.log(`Successfully invited ${botName} to incident channel`);
-          } catch (error) {
-            console.error(
-              `Error inviting ${botName} to incident channel:`,
-              error
-            );
+          } else {
+            // Log expected errors like 'already_in_channel' without failing
+            if (inviteBusinessResult.error === "already_in_channel") {
+              console.log(
+                `[DEBUG] Bot ${botName} already in business channel ${businessChannelId}.`
+              );
+            } else {
+              console.error(
+                `[DEBUG] Error inviting ${botName} to business channel ${businessChannelId}: ${inviteBusinessResult.error}`
+              );
+            }
           }
         } catch (error) {
-          console.error(`Error getting user ID for bot ${botName}:`, error);
+          console.error(
+            `[DEBUG] Exception inviting ${botName} to business channel:`,
+            error
+          );
         }
+
+        // Small delay between invites
+        await new Promise((resolve) => setTimeout(resolve, 500));
+
+        // Invite to incident channel using cs-bot's client
+        try {
+          const inviteIncidentResult =
+            await csBot.app.client.conversations.invite({
+              channel: incidentChannelId,
+              users: botSlackId,
+            });
+          if (inviteIncidentResult.ok) {
+            console.log(
+              `[DEBUG] Successfully invited ${botName} to incident channel ${incidentChannelId}.`
+            );
+          } else {
+            // Log expected errors like 'already_in_channel' without failing
+            if (inviteIncidentResult.error === "already_in_channel") {
+              console.log(
+                `[DEBUG] Bot ${botName} already in incident channel ${incidentChannelId}.`
+              );
+            } else {
+              console.error(
+                `[DEBUG] Error inviting ${botName} to incident channel ${incidentChannelId}: ${inviteIncidentResult.error}`
+              );
+            }
+          }
+        } catch (error) {
+          console.error(
+            `[DEBUG] Exception inviting ${botName} to incident channel:`,
+            error
+          );
+        }
+
+        // Small delay before next bot
+        await new Promise((resolve) => setTimeout(resolve, 500));
       } catch (error) {
-        console.error(`Error processing bot:`, error);
-        // Continue with other bots even if one fails
+        // Error processing a single bot, log and continue with others
+        console.error(
+          `[DEBUG] Error in invitation loop for bot ${bot.config.name}:`,
+          error
+        );
       }
     }
-
-    console.log("Finished inviting bots to channels");
+    console.log("[DEBUG] Finished inviting bots.");
   }
 
   getChannelInfo(drillId: string): ChannelInfo | undefined {

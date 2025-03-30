@@ -17,14 +17,10 @@ export const simulationService = {
 
     return response.data.scenarios.map((scenario: any) => ({
       id: scenario.id,
-      name: scenario.title,
       title: scenario.title,
       description: scenario.description,
-      // Set default values for frontend display purposes
-      duration: 45,
-      difficulty: 'Medium',
-      category: 'Incident Response',
-      topics: ['Security', 'DDoS', 'Incident Response'],
+      difficulty: scenario.difficulty,
+      length: scenario.length,
     }));
   },
 

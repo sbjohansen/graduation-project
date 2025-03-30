@@ -103,16 +103,39 @@ class BotManager {
       signingSecret: config.signingSecret,
       socketMode: true,
       appToken: config.appToken,
-      // Add more detailed logging to help diagnose socket mode issues
-      logLevel: LogLevel.DEBUG,
+      // Change log level to INFO to reduce verbosity
+      logLevel: LogLevel.INFO,
     };
 
     const app = new App(appOptions);
+
+    let botSlackId: string | undefined;
+    try {
+      // Wait briefly for the app to potentially connect before auth.test
+      // This might not be strictly necessary but can help in some race conditions
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const authResult = await app.client.auth.test({
+        token: config.botToken, // Ensure the correct token is used
+      });
+      if (authResult.ok) {
+        botSlackId = authResult.user_id;
+        console.log(
+          `Successfully fetched Slack User ID for ${config.name}: ${botSlackId}`
+        );
+      } else {
+        console.warn(
+          `Failed to fetch Slack User ID for ${config.name}: ${authResult.error}`
+        );
+      }
+    } catch (error) {
+      console.error(`Error fetching Slack User ID for ${config.name}:`, error);
+    }
 
     const botInstance: BotInstance = {
       config,
       app,
       isActive: false,
+      slackUserId: botSlackId, // Store the fetched Slack User ID
     };
 
     this.bots.set(config.id, botInstance);
@@ -265,17 +288,12 @@ class BotManager {
       return;
     }
 
-    console.log("[CHANNEL_MONITOR] Starting adaptive channel monitoring");
+    console.log("[CHANNEL_MONITOR] Starting channel monitoring loop");
 
-    // Check all channels using adaptive polling strategy
+    // Use a single interval, calling a unified check function
     this.channelCheckInterval = setInterval(() => {
-      this.checkActiveChannels(); // Check actively used channels more frequently
-    }, this.ACTIVE_POLLING_INTERVAL);
-
-    // Also set up a less frequent check for all channels
-    setInterval(() => {
-      this.checkAllMonitoredChannels();
-    }, this.BASE_POLLING_INTERVAL);
+      this.performChannelCheck();
+    }, this.ACTIVE_POLLING_INTERVAL); // Use the faster interval for responsiveness
   }
 
   /**
@@ -285,7 +303,7 @@ class BotManager {
     if (this.channelCheckInterval) {
       clearInterval(this.channelCheckInterval);
       this.channelCheckInterval = null;
-      console.log("[CHANNEL_MONITOR] Stopped active channel monitoring");
+      console.log("[CHANNEL_MONITOR] Stopped channel monitoring loop");
     }
   }
 
@@ -295,14 +313,11 @@ class BotManager {
   monitorChannel(channelId: string) {
     if (!this.monitoredChannels.has(channelId)) {
       this.monitoredChannels.add(channelId);
-      // Mark as active when first added
       this.channelLastActivity.set(channelId, Date.now());
       console.log(`[CHANNEL_MONITOR] Now monitoring channel: ${channelId}`);
-
-      // Start monitoring if not already started
-      if (!this.channelCheckInterval) {
-        this.startChannelMonitoring();
-      }
+      // if (!this.channelCheckInterval) {
+      //   this.startChannelMonitoring(); // COMMENTED OUT - Rely on event subscriptions
+      // }
     }
   }
 
@@ -312,9 +327,8 @@ class BotManager {
   stopMonitoringChannel(channelId: string) {
     if (this.monitoredChannels.has(channelId)) {
       this.monitoredChannels.delete(channelId);
+      this.channelLastActivity.delete(channelId); // Clean up activity map too
       console.log(`[CHANNEL_MONITOR] Stopped monitoring channel: ${channelId}`);
-
-      // If no more channels to monitor, stop the interval
       if (this.monitoredChannels.size === 0) {
         this.stopChannelMonitoring();
       }
@@ -329,47 +343,47 @@ class BotManager {
   }
 
   /**
-   * Check only recently active channels
+   * Unified check function for monitored channels.
+   * Checks a small subset of channels in each run to distribute load.
    */
-  private async checkActiveChannels() {
+  private async performChannelCheck() {
+    // Renamed from checkActiveChannels
     if (this.monitoredChannels.size === 0) {
       return;
     }
 
     const csBot = this.getBot("cs-bot");
     if (!csBot) {
-      return;
+      return; // Cannot check without cs-bot
     }
 
-    const now = Date.now();
-    const activeChannels: string[] = [];
+    // Convert monitored channels to an array to easily grab a subset
+    const channels = Array.from(this.monitoredChannels);
 
-    // Find channels with recent activity
-    for (const [
-      channelId,
-      lastActivity,
-    ] of this.channelLastActivity.entries()) {
-      if (
-        now - lastActivity < this.ACTIVITY_THRESHOLD &&
-        this.monitoredChannels.has(channelId)
-      ) {
-        activeChannels.push(channelId);
-      }
+    // Determine how many channels to check in this cycle (e.g., up to 3)
+    const checkLimit = 3;
+    const channelsToCheck = channels.slice(0, checkLimit);
+
+    // Rotate the channels list for next time, simple approach:
+    // Move the checked channels to the end of the set for the next iteration.
+    // This isn't perfect round-robin but ensures all get checked eventually.
+    channelsToCheck.forEach((channelId) => {
+      this.monitoredChannels.delete(channelId);
+      this.monitoredChannels.add(channelId);
+    });
+
+    if (channelsToCheck.length === 0) {
+      return; // No channels to check
     }
 
-    if (activeChannels.length === 0) {
-      return; // No active channels to check
-    }
-
-    // Only log occasionally to avoid console spam
+    // Only log occasionally
     if (Math.random() < 0.05) {
       console.log(
-        `[CHANNEL_MONITOR] Checking ${activeChannels.length} active channels`
+        `[CHANNEL_MONITOR] Performing check on subset: ${channelsToCheck.join(
+          ", "
+        )}`
       );
     }
-
-    // Check up to 3 active channels per cycle to avoid rate limits
-    const channelsToCheck = activeChannels.slice(0, 3);
 
     for (const channelId of channelsToCheck) {
       await this.checkSingleChannel(channelId, csBot);
@@ -377,14 +391,13 @@ class BotManager {
   }
 
   /**
-   * Check a single channel for new messages
+   * Check a single channel for new messages (Logic remains the same)
    */
   private async checkSingleChannel(channelId: string, csBot: BotInstance) {
     try {
-      // Fetch recent messages from the channel
       const result = await csBot.app.client.conversations.history({
         channel: channelId,
-        limit: 3, // Reduced from 5 to 3 to minimize data transfer
+        limit: 3,
       });
 
       if (!result.ok) {
@@ -394,10 +407,7 @@ class BotManager {
         return;
       }
 
-      // Process messages if any exist
       if (result.messages && result.messages.length > 0) {
-        // Process only messages that haven't been processed yet
-        // and aren't from bots
         const newUserMessages = result.messages
           .filter(
             (msg: SlackMessage) =>
@@ -413,38 +423,28 @@ class BotManager {
                 msg.text || ""
               )
           )
-          .reverse(); // Process oldest messages first
+          .reverse();
 
         if (newUserMessages.length > 0) {
           console.log(
-            `[CHANNEL_MONITOR] Found ${newUserMessages.length} new messages in channel ${channelId}`
+            `[CHANNEL_MONITOR] Found ${newUserMessages.length} new user messages in channel ${channelId}` // Keep this log
           );
-
-          // Mark this channel as active
           this.updateChannelActivity(channelId);
 
-          // Process each new message
           for (const msg of newUserMessages as SlackMessage[]) {
-            // Directly handle the message by emitting it through the event handler
             try {
-              console.log(
-                `[CHANNEL_MONITOR] Processing message: "${msg.text}" from user ${msg.user}`
-              );
-
-              // Get a reference to the message handler to process the message
+              // console.log(
+              //    `[CHANNEL_MONITOR] Processing message: "${msg.text}" from user ${msg.user}` // Can likely remove this too if needed
+              // );
               const { messageHandler } = require("../messageHandler");
-
-              // Use the scenario service directly
               await messageHandler.scenarioService.processUserMessage(
                 msg.user as string,
                 channelId,
                 msg.text as string
               );
-
-              // Confirm we processed the message
-              console.log(
-                `[CHANNEL_MONITOR] Successfully processed message from user ${msg.user}`
-              );
+              // console.log(
+              //   `[CHANNEL_MONITOR] Successfully processed message from user ${msg.user}` // And this
+              // );
             } catch (err) {
               console.error(`[CHANNEL_MONITOR] Error processing message:`, err);
             }
@@ -456,49 +456,6 @@ class BotManager {
         `[CHANNEL_MONITOR] Error checking channel ${channelId}:`,
         error
       );
-    }
-  }
-
-  /**
-   * Check for new messages in all monitored channels - runs less frequently as a backup
-   */
-  private async checkAllMonitoredChannels() {
-    if (this.monitoredChannels.size === 0) {
-      return;
-    }
-
-    const csBot = this.getBot("cs-bot");
-    if (!csBot) {
-      console.error(
-        "[CHANNEL_MONITOR] CS-Bot not found, cannot monitor channels"
-      );
-      return;
-    }
-
-    // Log infrequently to avoid console spam
-    if (Math.random() < 0.2) {
-      console.log(
-        `[CHANNEL_MONITOR] Performing full check of all ${this.monitoredChannels.size} channels`
-      );
-    }
-
-    // Convert to array so we can take a subset
-    const allChannels = Array.from(this.monitoredChannels);
-
-    // Check only a portion of channels each time (5 max) to reduce API load
-    const channelsToCheck = allChannels.slice(0, 5);
-
-    for (const channelId of channelsToCheck) {
-      // Don't check channels that were just checked by the active checker
-      const lastActivity = this.channelLastActivity.get(channelId) || 0;
-      const now = Date.now();
-
-      // Skip if checked within the last few seconds
-      if (now - lastActivity < this.ACTIVE_POLLING_INTERVAL) {
-        continue;
-      }
-
-      await this.checkSingleChannel(channelId, csBot);
     }
   }
 }

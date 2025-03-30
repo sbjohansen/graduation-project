@@ -1,0 +1,53 @@
+{
+  "scenarioId": "drill-flex-creative",
+  "scenarioTitle": "Pete's Big Day",
+  "scenarioDescription": "A major product launch faces unexpected cybersecurity challenges. Your job is to lead the incident response with your team of bots.",
+  "difficulty": "Medium",
+  "length": "Medium",
+  "initialSituation": "It's launch day for 'Pete's Big Day 2.0'. Initial signs are good, but suddenly the site becomes extremely slow. Monitoring shows a massive, unexpected spike in traffic directed primarily at the login and checkout APIs. Customers are complaining of timeouts and failed checkouts.",
+  "overallGoal": "Identify the anomalous traffic pattern as a DDoS attack, implement effective DDoS mitigation techniques (e.g., IP blocking, rate limiting, WAF rules) to block the malicious traffic while allowing legitimate users, restore normal website performance and stability, confirm resolution, and ensure the team lead (user) makes key decisions.",
+  "initialBotMessages": [
+    {
+      "from": "cs-bot",
+      "role": "system",
+      "channel": "business",
+      "message": "Welcome to the Business Channel for the 'Pete's Big Day 2.0' drill. I'll help coordinate communication."
+    },
+    {
+      "from": "cs-bot",
+      "role": "system",
+      "channel": "incident",
+      "message": "Welcome to the Incident Channel for the 'Pete's Big Day 2.0' drill. Technical discussion and coordination will happen here."
+    },
+    {
+      "from": "pete",
+      "role": "ceo",
+      "channel": "business",
+      "message": "Alright team, launch day is here! 'Pete's Big Day 2.0' is live! Monitoring initial sales numbers - let's make this huge!"
+    },
+    {
+      "from": "peter",
+      "role": "network_engineer",
+      "channel": "incident",
+      "message": "Network looking stable, traffic starting to ramp up as expected for launch."
+    },
+    {
+      "from": "mike",
+      "role": "security_engineer",
+      "channel": "incident",
+      "message": "Copy that, Peter. Security monitoring is active. Watching for any unusual activity."
+    },
+    {
+      "from": "pete",
+      "role": "ceo",
+      "channel": "business",
+      "message": "Hold on... what's going on? The site is crawling! Reports are flooding in about website slowdowns and customers can't check out! This is turning into a disaster - urgent fix needed NOW!"
+    },
+    {
+      "from": "hanna",
+      "role": "customer_care",
+      "channel": "business",
+      "message": "Confirming Pete, we're seeing a surge in customer complaints about slow loading and failed checkouts. Sentiment is turning negative quickly."
+    }
+  ]
+}

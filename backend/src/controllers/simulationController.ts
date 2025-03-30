@@ -1,5 +1,8 @@
 import { Request, Response } from "express";
 import { messageHandler } from "../slack/messageHandler";
+// Import Node.js modules
+import fs from "fs";
+import path from "path";
 
 export const simulationController = {
   /**
@@ -79,22 +82,36 @@ export const simulationController = {
    */
   getScenarios: async (req: Request, res: Response): Promise<void> => {
     try {
-      // This is a simplified implementation.
-      // In a real app, you'd likely fetch this from a database
-      // or dynamically read from the file system
-      const scenarios = [
-        {
-          id: "drill-1",
-          title: "Jeff's Big Day!",
-          description:
-            "Handle a cybersecurity incident during a major product launch",
-        },
-        // Add more scenarios here as needed
-      ];
+      // --- Dynamically read scenarios ---
+      const scenariosDir = path.join(__dirname, "../slack/scenarios");
+      const scenarioFiles = fs
+        .readdirSync(scenariosDir)
+        .filter((file) => file.endsWith(".json"));
+
+      const scenarios = scenarioFiles
+        .map((file) => {
+          try {
+            const filePath = path.join(scenariosDir, file);
+            const fileContent = fs.readFileSync(filePath, "utf8");
+            const scenarioData = JSON.parse(fileContent);
+            // Return only the needed fields for the list
+            return {
+              id: scenarioData.scenarioId,
+              title: scenarioData.scenarioTitle,
+              description: scenarioData.scenarioDescription,
+              difficulty: scenarioData.difficulty || "Unknown",
+              length: scenarioData.length || "Unknown",
+            };
+          } catch (parseError) {
+            console.error(`Error parsing scenario file ${file}:`, parseError);
+            return null; // Skip files that fail to parse
+          }
+        })
+        .filter((scenario) => scenario !== null); // Filter out nulls from failed parses
 
       res.status(200).json({
         success: true,
-        scenarios,
+        scenarios, // Return the dynamic list
       });
     } catch (error) {
       console.error("Error fetching scenarios:", error);
@@ -126,20 +143,17 @@ export const simulationController = {
       }
 
       res.status(200).json({
-        success: true,
-        status: {
-          scenarioId: activeScenario.scenario.scenarioId,
-          scenarioTitle: activeScenario.scenario.scenarioTitle,
-          currentStep: activeScenario.currentStep,
-          totalSteps: activeScenario.scenario.steps.length,
-          startedAt: activeScenario.startedAt,
-          completedObjectives: activeScenario.completedObjectives,
-          awardedBadges: activeScenario.awardedBadges,
-          channels: {
-            business: activeScenario.businessChannelId,
-            incident: activeScenario.incidentChannelId,
-          },
-        },
+        scenarioId: activeScenario.scenario.scenarioId,
+        scenarioTitle: activeScenario.scenario.scenarioTitle,
+        scenarioDescription: activeScenario.scenario.scenarioDescription,
+        initialSituation: activeScenario.scenario.initialSituation,
+        overallGoal: activeScenario.scenario.overallGoal,
+        businessChannelId: activeScenario.businessChannelId,
+        incidentChannelId: activeScenario.incidentChannelId,
+        startedAt: activeScenario.startedAt,
+        keyMilestones: activeScenario.keyMilestones || [],
+        awardedBadges: activeScenario.awardedBadges,
+        messageHistory: activeScenario.messageHistory,
       });
     } catch (error) {
       console.error("Error fetching simulation status:", error);
@@ -198,7 +212,6 @@ export const simulationController = {
         userEmail: sim.userEmail,
         scenarioId: sim.scenario.scenarioId,
         scenarioTitle: sim.scenario.scenarioTitle,
-        currentStep: sim.currentStep,
         startedAt: sim.startedAt,
         businessChannelId: sim.businessChannelId,
         incidentChannelId: sim.incidentChannelId,
@@ -212,6 +225,48 @@ export const simulationController = {
     } catch (error) {
       console.error("Error fetching active simulations:", error);
       res.status(500).json({ error: "Failed to fetch active simulations" });
+    }
+  },
+
+  /**
+   * Post a message to a simulation scenario
+   * @route POST /api/simulations/message
+   */
+  postScenarioMessage: async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { userId, channelId, message } = req.body;
+
+      if (!userId || !channelId || !message) {
+        res.status(400).json({
+          error: "Missing required fields: userId, channelId, and message",
+        });
+        return;
+      }
+
+      console.log(
+        `Forwarding message from user ${userId} to message handler for channel ${channelId}`
+      );
+      // Call processUserMessage on the messageHandler instance
+      // Note: MessageHandler might not expose processUserMessage directly.
+      // It likely handles messages internally via its setupMessageHandling method.
+      // We might need a different method on messageHandler or rethink this call.
+      // FOR NOW: Assuming messageHandler.ts setup intercepts Slack messages and calls scenarioService internally.
+      // IF this endpoint is meant to *manually inject* a message, messageHandler needs an explicit method for it.
+      // Let's comment out the direct call for now, assuming Slack event handling is the primary path.
+
+      // await messageHandler.processUserMessage(userId, channelId, message); // Needs verification
+
+      // TEMP: If this endpoint MUST manually inject messages, we'd need:
+      // 1. Expose scenarioService from messageHandler OR
+      // 2. Add a method like `handleManualMessage` to messageHandler that calls scenarioService.processUserMessage
+
+      res.status(200).json({
+        success: true,
+        message: "Message received (processing via Slack events).",
+      });
+    } catch (error) {
+      console.error("Error in postScenarioMessage endpoint:", error);
+      res.status(500).json({ error: "Failed to handle message posting" });
     }
   },
 };

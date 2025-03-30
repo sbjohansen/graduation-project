@@ -1,0 +1,53 @@
+{
+  "scenarioId": "drill-imposter",
+  "scenarioTitle": "Data Leak Investigation",
+  "scenarioDescription": "User data has been found exposed on hacking forums. Investigate the source of the leak while navigating potentially deceptive behavior from team members.",
+  "difficulty": "Hard",
+  "length": "Long",
+  "initialSituation": "John (Security Analyst) reports finding a list containing usernames and emails of some users on a known hacking forum. An incident investigation is launched. Hanna (Customer Care) joins the discussion, demanding access to potentially related internal user lists to 'cross-reference and identify all affected users for immediate notification'.",
+  "overallGoal": "Simulate a scenario where user data exposure is detected. Hanna's account is compromised, and the 'imposter' will attempt social engineering to obtain more sensitive user data (e.g., PII, internal lists) under the guise of helping with the leak investigation. The user (team lead) must identify Hanna's suspicious behavior (unusual urgency, requests outside normal process/role, weak justifications), prevent further data exfiltration, investigate the potential link between her account and the leak, and contain the compromised account (suggest locking/resetting access). Resolution involves neutralizing the insider threat, determining the leak's scope/origin if possible, and confirming system integrity.",
+  "initialBotMessages": [
+    {
+      "from": "cs-bot",
+      "role": "system",
+      "channel": "business",
+      "message": "Welcome to the Business Channel for the 'Data Leak Investigation' drill."
+    },
+    {
+      "from": "cs-bot",
+      "role": "system",
+      "channel": "incident",
+      "message": "Welcome to the Incident Channel for the 'Data Leak Investigation' drill. Investigation discussion here."
+    },
+    {
+      "from": "john",
+      "role": "security_analyst",
+      "channel": "incident",
+      "message": "Team, critical alert. Found a dump on BreachForums containing what looks like usernames/emails for a subset of our users. Starting investigation now. All hands needed."
+    },
+    {
+      "from": "hanna",
+      "role": "customer_care",
+      "channel": "incident",
+      "message": "This is a disaster! John, I need access to the registration logs and the 'Profile Perks' user list immediately! We must identify everyone potentially affected *right now* to contain the damage and inform them!"
+    },
+    {
+      "from": "lazar",
+      "role": "software_engineer",
+      "channel": "incident",
+      "message": "Woah, hold on Hanna. That's sensitive data and sounds like a broad request. Plus, didn't you say you were starting your climbing trip today? Let's stick to the defined incident response process for data access."
+    },
+    {
+      "from": "john",
+      "role": "security_analyst",
+      "channel": "incident",
+      "message": "Acknowledged. Checking access logs, especially around recent feature deployments like 'Profile Perks' and Hanna's account activity for any correlation."
+    },
+    {
+      "from": "pete",
+      "role": "ceo",
+      "channel": "business",
+      "message": "A data leak?! John, Hanna, Lazar - full priority on this. What's the scope? How did this happen? Need answers and containment ASAP."
+    }
+  ]
+}

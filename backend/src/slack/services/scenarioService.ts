@@ -5,28 +5,13 @@ import { LLMService } from "../../llm/llmService";
 import { botManager } from "./botManager";
 import { channelManager } from "./channelManager";
 
-interface ScenarioStep {
-  stepNumber: number;
-  stepTitle: string;
-  stepDescription: string;
-  objectives: string[];
-  hints: string[];
-  isFulfilled: boolean;
-  botMessages: BotMessage[];
-}
-
-interface BotMessage {
-  from: string;
-  role: string;
-  channel: string;
-  message: string;
-}
-
 interface Scenario {
   scenarioId: string;
   scenarioTitle: string;
   scenarioDescription: string;
-  steps: ScenarioStep[];
+  initialSituation: string;
+  overallGoal: string;
+  initialBotMessages?: BotMessage[];
 }
 
 interface UserMessage {
@@ -44,25 +29,24 @@ interface SystemBotResponse {
   timestamp: Date;
 }
 
+interface BotMessage {
+  from: string;
+  role: string;
+  channel: string;
+  message: string;
+}
+
 interface ActiveScenario {
   userId: string;
   userEmail: string;
   scenario: Scenario;
-  currentStep: number;
   businessChannelId: string;
   incidentChannelId: string;
   startedAt: Date;
-  completedObjectives: Record<number, string[]>;
+  status: "pending_start" | "active" | "resolved";
+  keyMilestones?: string[];
   awardedBadges: string[];
   messageHistory: Array<UserMessage | SystemBotResponse>;
-}
-
-interface StepStatus {
-  currentStep: number;
-  objectivesFulfilled: string[];
-  nextStep: number | null;
-  awardedBadges: string[];
-  otherStepData?: Record<string, any>;
 }
 
 interface BotResponse {
@@ -73,9 +57,16 @@ interface BotResponse {
 }
 
 interface LLMResponse {
-  stepStatus: StepStatus;
+  simulationStatus?: {
+    awardedBadges?: string[];
+    isResolved?: boolean;
+  };
   botResponses: BotResponse[];
   narrativeResponse: string;
+  scheduledResponses?: {
+    delay: number;
+    response: BotResponse;
+  }[];
 }
 
 class ScenarioService {
@@ -84,9 +75,8 @@ class ScenarioService {
   private systemPrompt: string;
   private readonly MAX_HISTORY_ITEMS = 20;
 
-  constructor(llmService: LLMService) {
-    this.llmService = llmService;
-    // Load the system prompt
+  constructor(llmServiceDep: LLMService) {
+    this.llmService = llmServiceDep;
     this.systemPrompt = fs.readFileSync(
       path.join(__dirname, "../scenarios/system-prompt.md"),
       "utf8"
@@ -98,7 +88,6 @@ class ScenarioService {
     scenarioId: string
   ): Promise<ActiveScenario> {
     try {
-      // Load scenario from file
       const scenarioPath = path.join(
         __dirname,
         `../scenarios/${scenarioId}.json`
@@ -106,19 +95,16 @@ class ScenarioService {
       const scenarioData = fs.readFileSync(scenarioPath, "utf8");
       const scenario: Scenario = JSON.parse(scenarioData);
 
-      // Create channels for the drill
       const channels = await channelManager.createDrillChannels(
         userEmail,
         scenarioId
       );
 
-      // Get the user's Slack ID from their email
       const csBot = botManager.getBot("cs-bot");
       if (!csBot) {
         throw new Error("CS-Bot not found");
       }
 
-      console.log(`Looking up Slack ID for user email: ${userEmail}`);
       let userId;
       try {
         const userResponse = await csBot.app.client.users.lookupByEmail({
@@ -129,40 +115,56 @@ class ScenarioService {
           console.warn(
             `User not found with email: ${userEmail}, using generated ID`
           );
-          userId = uuidv4(); // Fallback to a UUID if email lookup fails
+          userId = uuidv4();
         } else {
           userId = userResponse.user.id;
-          console.log(`Found Slack user ID: ${userId} for email: ${userEmail}`);
         }
       } catch (error) {
         console.error(`Error looking up user by email: ${userEmail}`, error);
-        userId = uuidv4(); // Fallback to a UUID if lookup fails
+        userId = uuidv4();
       }
 
-      // Create active scenario record
       const activeScenario: ActiveScenario = {
         userId,
         userEmail,
         scenario,
-        currentStep: 1,
         businessChannelId: channels.businessChannelId,
         incidentChannelId: channels.incidentChannelId,
         startedAt: new Date(),
-        completedObjectives: {},
+        status: "pending_start",
         awardedBadges: [],
         messageHistory: [],
       };
 
-      // Store in active scenarios map
       this.activeScenarios.set(userId, activeScenario);
       console.log(
-        `Started scenario ${scenarioId} for user ID: ${userId} (email: ${userEmail})`
+        `Scenario ${scenarioId} created for user ${userId}, status: pending_start`
       );
 
-      // Send initial bot messages for step 1
-      await this.sendInitialBotMessages(activeScenario);
+      // --- Send Instructions ---
+      try {
+        const instructions = `>*Welcome to the ${scenario.scenarioTitle} drill!*\n>\n>*Your Goal:* ${scenario.scenarioDescription}.\n>\n>Navigate the situation described below and work with your team to identify the root cause, mitigate the issue, and restore normal operations.\n>\n>*Channels:*\n>- \`#${channels.businessChannelName}\` (this channel): For high-level updates, business impact discussions, and communication with the CEO (Pete).\n>- \`#${channels.incidentChannelName}\`: For technical investigation, coordination with the engineering/security team (Hanna, John, Mike, Peter, Lazar), and detailed findings.\n>\n>*Interacting with Bots:*\n>- Mention bots using \`@BotName\` (e.g., \`@hanna\`, \`@pete\`) to direct tasks or questions.\n>- Bots will respond based on their roles and the information available.\n>- Some tasks take time; bots will acknowledge and follow up later using scheduled messages.\n>\n>*Initial Situation:*\n>${scenario.initialSituation}\n>\n>*Ready to begin? Please type \`START\` in this channel.*`;
 
-      return activeScenario;
+        if (csBot) {
+          await csBot.app.client.chat.postMessage({
+            channel: channels.businessChannelId,
+            text: instructions,
+            username: "Drill Master",
+          });
+          console.log(
+            `Instructions sent to business channel ${channels.businessChannelId}`
+          );
+        } else {
+          console.error("CS-Bot not found, cannot send instructions.");
+        }
+      } catch (instrError) {
+        console.error("Error sending instructions:", instrError);
+      }
+
+      // Do NOT send initial bot messages yet.
+      // await this.sendInitialBotMessages(activeScenario);
+
+      return activeScenario; // Return the pending scenario
     } catch (error) {
       console.error("Error starting scenario:", error);
       throw error;
@@ -172,31 +174,16 @@ class ScenarioService {
   private async sendInitialBotMessages(
     activeScenario: ActiveScenario
   ): Promise<void> {
-    const { scenario, currentStep, businessChannelId, incidentChannelId } =
-      activeScenario;
+    const { scenario, businessChannelId, incidentChannelId } = activeScenario;
 
-    console.log(
-      `Sending initial bot messages for step ${currentStep} in scenario ${scenario.scenarioId}`
-    );
-    console.log(
-      `Using channels: business=${businessChannelId}, incident=${incidentChannelId}`
-    );
-
-    // Add a delay to allow Slack to fully provision the channels
-    console.log(
-      `Waiting for 3 seconds to allow channels to be fully provisioned...`
-    );
     await new Promise((resolve) => setTimeout(resolve, 3000));
-    console.log(`Resuming after delay`);
 
-    // Get initial messages for the current step
-    const step = scenario.steps.find((s) => s.stepNumber === currentStep);
-    if (!step) {
-      throw new Error(`Step ${currentStep} not found in scenario`);
+    const initialBotMessages = scenario.initialBotMessages;
+    if (!initialBotMessages || initialBotMessages.length === 0) {
+      return;
     }
 
-    // Send all bot messages for this step
-    for (const botMsg of step.botMessages) {
+    for (const botMsg of initialBotMessages) {
       try {
         const bot = botManager.getBot(botMsg.from);
         if (!bot) {
@@ -207,24 +194,16 @@ class ScenarioService {
         const channelId =
           botMsg.channel === "business" ? businessChannelId : incidentChannelId;
 
-        console.log(
-          `Sending message from ${botMsg.from} to channel ${channelId}`
-        );
-
-        // Wait a small amount of time between messages
         await new Promise((resolve) => setTimeout(resolve, 500));
 
-        // Verify the channel exists
         let channelExists = false;
         for (let retryCount = 0; retryCount < 3; retryCount++) {
           try {
             const channelInfo = await bot.app.client.conversations.info({
               channel: channelId,
             });
-
             if (channelInfo.ok) {
               channelExists = true;
-              console.log(`Verified channel ${channelId} exists`);
               break;
             } else {
               console.error(
@@ -232,7 +211,6 @@ class ScenarioService {
                   retryCount + 1
                 }: ${JSON.stringify(channelInfo)}`
               );
-              // Wait before retry
               await new Promise((resolve) => setTimeout(resolve, 1000));
             }
           } catch (error) {
@@ -242,7 +220,6 @@ class ScenarioService {
               }:`,
               error
             );
-            // Wait before retry
             await new Promise((resolve) => setTimeout(resolve, 1000));
           }
         }
@@ -254,7 +231,6 @@ class ScenarioService {
           continue;
         }
 
-        // Send the message
         const result = await bot.app.client.chat.postMessage({
           channel: channelId,
           text: botMsg.message,
@@ -266,11 +242,6 @@ class ScenarioService {
           continue;
         }
 
-        console.log(
-          `Successfully sent message from ${botMsg.from} to channel ${channelId}`
-        );
-
-        // Record this bot message in history
         activeScenario.messageHistory.push({
           from: botMsg.from,
           role: botMsg.role,
@@ -280,7 +251,6 @@ class ScenarioService {
         });
       } catch (error) {
         console.error(`Error sending message from ${botMsg.from}:`, error);
-        // Continue with other messages even if one fails
       }
     }
   }
@@ -290,182 +260,49 @@ class ScenarioService {
     channelId: string,
     message: string
   ): Promise<void> {
-    console.log(
-      `[SCENARIO] Processing user message from ${userId} in channel ${channelId}: "${message}"`
-    );
-
-    // Verify channel information
-    try {
-      const { channelManager } = require("./channelManager");
-      console.log(`[SCENARIO] Looking up channel info for ${channelId}`);
-      const channelInfo = channelManager.getChannelInfo(channelId);
-
-      if (channelInfo) {
-        console.log(`[SCENARIO] FOUND CHANNEL INFO in cache:`);
-        console.log(
-          `[SCENARIO] Business channel ID: ${channelInfo.businessChannelId}`
-        );
-        console.log(
-          `[SCENARIO] Incident channel ID: ${channelInfo.incidentChannelId}`
-        );
-
-        // Determine if this is a business or incident channel
-        const isBusinessChannel = channelInfo.businessChannelId === channelId;
-        const isIncidentChannel = channelInfo.incidentChannelId === channelId;
-
-        console.log(
-          `[SCENARIO] Channel type: ${
-            isBusinessChannel
-              ? "BUSINESS"
-              : isIncidentChannel
-              ? "INCIDENT"
-              : "UNKNOWN"
-          }`
-        );
-      } else {
-        console.log(`[SCENARIO] Channel ${channelId} not found in cache`);
-      }
-
-      // Get drill ID for the channel
-      const drillId = channelManager.findDrillIdByChannelId(channelId);
-      if (drillId) {
-        console.log(
-          `[SCENARIO] Found drill ID: ${drillId} for channel: ${channelId}`
-        );
-      } else {
-        console.log(
-          `[SCENARIO] Could not find drill ID for channel: ${channelId}`
-        );
-      }
-    } catch (err) {
-      console.error(`[SCENARIO] Error checking channel info:`, err);
-    }
-
-    // Debug channel info from Slack API directly
-    try {
-      console.log(`[SCENARIO] Fetching channel info from Slack API`);
-      const { botManager } = require("./botManager");
-      const csBot = botManager.getBot("cs-bot");
-
-      if (csBot) {
-        const channelInfo = await csBot.app.client.conversations.info({
-          channel: channelId,
-        });
-
-        if (channelInfo.ok) {
-          console.log(`[SCENARIO] Channel API info:`);
-          console.log(`- Name: ${channelInfo.channel.name}`);
-          console.log(`- Is Private: ${channelInfo.channel.is_private}`);
-          console.log(`- Member count: ${channelInfo.channel.num_members}`);
-        } else {
-          console.log(
-            `[SCENARIO] Failed to get channel API info: ${channelInfo.error}`
-          );
-        }
-      }
-    } catch (err) {
-      console.error(`[SCENARIO] Error fetching channel info from API:`, err);
-    }
-
-    // Find the active scenario by userId
-    const activeScenario = this.activeScenarios.get(userId);
+    let activeScenario = this.activeScenarios.get(userId);
 
     if (!activeScenario) {
-      console.log(`[SCENARIO] No active scenario found for user ${userId}`);
-
-      // Try to find by channel instead - convert Map to array first
       const activeScenarioArray = Array.from(this.activeScenarios.values());
-      const scenarioByChannel = activeScenarioArray.find(
+      activeScenario = activeScenarioArray.find(
         (scenario) =>
           scenario.businessChannelId === channelId ||
           scenario.incidentChannelId === channelId
       );
 
-      if (scenarioByChannel) {
+      if (activeScenario) {
+      } else {
         console.log(
-          `[SCENARIO] Found scenario by channel match instead of user ID`
+          `[SCENARIO] No active scenario found for user ${userId} or channel ${channelId}`
         );
-        console.log(
-          `[SCENARIO] Using scenario for user ${scenarioByChannel.userId} (${scenarioByChannel.userEmail})`
-        );
-
-        // Process the message with the correct scenario
-        await this.handleUserMessage(scenarioByChannel, channelId, message);
         return;
       }
-
-      // Debug active scenarios
-      console.log(`[SCENARIO] Active scenarios: ${this.activeScenarios.size}`);
-
-      const scenariosArray = Array.from(this.activeScenarios.values());
-      scenariosArray.forEach((s, index) => {
-        console.log(`[SCENARIO] Scenario ${index + 1}:`);
-        console.log(`- User ID: ${s.userId}`);
-        console.log(`- User Email: ${s.userEmail}`);
-        console.log(`- Business Channel: ${s.businessChannelId}`);
-        console.log(`- Incident Channel: ${s.incidentChannelId}`);
-
-        // Check for partial matches
-        const businessPartialMatch =
-          s.businessChannelId.includes(channelId) ||
-          channelId.includes(s.businessChannelId);
-        const incidentPartialMatch =
-          s.incidentChannelId.includes(channelId) ||
-          channelId.includes(s.incidentChannelId);
-
-        if (businessPartialMatch) {
-          console.log(`- PARTIAL MATCH with business channel`);
-        }
-        if (incidentPartialMatch) {
-          console.log(`- PARTIAL MATCH with incident channel`);
-        }
-      });
-
-      // Return early as we can't process the message without a scenario
-      return;
     }
 
-    // Process the message with the active scenario
     await this.handleUserMessage(activeScenario, channelId, message);
   }
 
-  private updateScenarioState(
-    activeScenario: ActiveScenario,
-    llmResponse: LLMResponse
-  ): void {
-    const { stepStatus } = llmResponse;
-
-    // Update completed objectives
-    if (stepStatus.objectivesFulfilled.length > 0) {
-      activeScenario.completedObjectives[activeScenario.currentStep] =
-        stepStatus.objectivesFulfilled;
-    }
-
-    // Add any awarded badges
-    if (stepStatus.awardedBadges && stepStatus.awardedBadges.length > 0) {
-      activeScenario.awardedBadges = [
-        ...activeScenario.awardedBadges,
-        ...stepStatus.awardedBadges.filter(
-          (badge) => !activeScenario.awardedBadges.includes(badge)
-        ),
-      ];
-    }
-
-    // Move to next step if specified
-    if (stepStatus.nextStep !== null) {
-      activeScenario.currentStep = stepStatus.nextStep;
-    }
+  // --- Helper function to format mentions ---
+  private formatMentions(messageText: string): string {
+    // Regex to find @ followed by bot names (adjust chars allowed in name if needed)
+    const mentionRegex = /@([a-zA-Z0-9_\-]+)/g;
+    return messageText.replace(mentionRegex, (match, botId) => {
+      const bot = botManager.getBot(botId.toLowerCase()); // Use lowercase ID for lookup
+      if (bot && bot.slackUserId) {
+        return `<@${bot.slackUserId}>`; // Replace with Slack mention format
+      }
+      return match; // Return original text if bot or slackUserId not found
+    });
   }
 
   private async sendBotResponses(
     activeScenario: ActiveScenario,
-    botResponses: BotResponse[]
+    responses: BotResponse[]
   ): Promise<void> {
     console.log(
-      `[MESSAGE_TRACKER] sendBotResponses: Sending ${botResponses.length} bot responses for user ${activeScenario.userId}`
+      `[MESSAGE_TRACKER] Sending ${responses.length} immediate bot responses for user ${activeScenario.userId}`
     );
-
-    for (const response of botResponses) {
+    for (const response of responses) {
       try {
         const bot = botManager.getBot(response.from);
         if (!bot) {
@@ -480,39 +317,17 @@ class ScenarioService {
             ? activeScenario.businessChannelId
             : activeScenario.incidentChannelId;
 
-        console.log(
-          `[MESSAGE_TRACKER] Sending response from ${response.from} to channel ${channelId} (${response.channel})`
-        );
-        console.log(
-          `[MESSAGE_TRACKER] Message content: "${response.message.substring(
-            0,
-            50
-          )}${response.message.length > 50 ? "..." : ""}"`
-        );
-
-        // Wait a small amount of time between messages
         await new Promise((resolve) => setTimeout(resolve, 500));
 
-        // Verify the channel exists before sending with retries
         let channelExists = false;
         for (let retryCount = 0; retryCount < 3; retryCount++) {
           try {
-            console.log(
-              `[MESSAGE_TRACKER] Verifying channel ${channelId} exists (attempt ${
-                retryCount + 1
-              })`
-            );
             const channelInfo = await bot.app.client.conversations.info({
               channel: channelId,
             });
 
             if (channelInfo.ok) {
               channelExists = true;
-              console.log(
-                `[MESSAGE_TRACKER] Verified channel ${channelId} exists on attempt ${
-                  retryCount + 1
-                }`
-              );
               break;
             } else {
               console.error(
@@ -520,11 +335,7 @@ class ScenarioService {
                   retryCount + 1
                 }: ${JSON.stringify(channelInfo)}`
               );
-              // Wait before retry with increasing backoff
               const delay = 1000 * (retryCount + 1);
-              console.log(
-                `[MESSAGE_TRACKER] Waiting ${delay}ms before next attempt...`
-              );
               await new Promise((resolve) => setTimeout(resolve, delay));
             }
           } catch (error) {
@@ -534,11 +345,7 @@ class ScenarioService {
               }:`,
               error
             );
-            // Wait before retry with increasing backoff
             const delay = 1000 * (retryCount + 1);
-            console.log(
-              `[MESSAGE_TRACKER] Waiting ${delay}ms before next attempt...`
-            );
             await new Promise((resolve) => setTimeout(resolve, delay));
           }
         }
@@ -550,33 +357,20 @@ class ScenarioService {
           continue;
         }
 
-        // Send the message with retries
+        // --- Format mentions before sending ---
+        const formattedMessage = this.formatMentions(response.message);
+
         let messageSent = false;
         for (let retryCount = 0; retryCount < 3; retryCount++) {
           try {
-            console.log(
-              `[MESSAGE_TRACKER] Sending message to channel ${channelId} (attempt ${
-                retryCount + 1
-              })`
-            );
             const result = await bot.app.client.chat.postMessage({
               channel: channelId,
-              text: response.message,
+              text: formattedMessage, // Use formatted message
               username: `${response.from} (${response.role})`,
             });
 
             if (result.ok) {
               messageSent = true;
-              console.log(
-                `[MESSAGE_TRACKER] Successfully sent response from ${
-                  response.from
-                } to channel ${channelId} on attempt ${retryCount + 1}`
-              );
-              if (result.ts) {
-                console.log(
-                  `[MESSAGE_TRACKER] Message timestamp: ${result.ts}`
-                );
-              }
               break;
             } else {
               console.error(
@@ -584,11 +378,7 @@ class ScenarioService {
                   retryCount + 1
                 }: ${JSON.stringify(result)}`
               );
-              // Wait before retry with increasing backoff
               const delay = 1000 * (retryCount + 1);
-              console.log(
-                `[MESSAGE_TRACKER] Waiting ${delay}ms before next attempt...`
-              );
               await new Promise((resolve) => setTimeout(resolve, delay));
             }
           } catch (error) {
@@ -598,11 +388,7 @@ class ScenarioService {
               }:`,
               error
             );
-            // Wait before retry with increasing backoff
             const delay = 1000 * (retryCount + 1);
-            console.log(
-              `[MESSAGE_TRACKER] Waiting ${delay}ms before next attempt...`
-            );
             await new Promise((resolve) => setTimeout(resolve, delay));
           }
         }
@@ -614,47 +400,42 @@ class ScenarioService {
           continue;
         }
 
-        // Record this bot message in history
+        // Store original message in history for LLM context
         activeScenario.messageHistory.push({
           from: response.from,
           role: response.role,
           channel: response.channel,
-          message: response.message,
+          message: response.message, // Store original message
           timestamp: new Date(),
         });
-        console.log(
-          `[MESSAGE_TRACKER] Message recorded in history, total messages: ${activeScenario.messageHistory.length}`
-        );
       } catch (error) {
         console.error(
           `[MESSAGE_TRACKER] Error sending response from ${response.from}:`,
           error
         );
-        // Continue with other responses even if one fails
       }
     }
-
-    console.log(`[MESSAGE_TRACKER] Finished sending all bot responses`);
   }
 
   async endScenario(userId: string): Promise<void> {
     const activeScenario = this.activeScenarios.get(userId);
     if (!activeScenario) {
-      throw new Error(`No active scenario found for user ${userId}`);
+      console.log(
+        `Attempted to end scenario for user ${userId}, but none was active.`
+      );
+      return;
     }
-
+    console.log(`Ending scenario for user ${userId}.`);
     try {
-      // Archive channels
       await channelManager.deleteDrillChannels(
         activeScenario.businessChannelId,
         activeScenario.incidentChannelId
       );
-
-      // Remove from active scenarios
       this.activeScenarios.delete(userId);
+      console.log(`Scenario ended successfully for user ${userId}.`);
     } catch (error) {
       console.error("Error ending scenario:", error);
-      throw error;
+      this.activeScenarios.delete(userId);
     }
   }
 
@@ -671,42 +452,92 @@ class ScenarioService {
     if (activeScenario) {
       this.activeScenarios.delete(oldUserId);
       this.activeScenarios.set(newUserId, activeScenario);
-      console.log(`Updated user ID from ${oldUserId} to ${newUserId}`);
     }
   }
 
-  // Add helper method to handle messages with a known scenario
   private async handleUserMessage(
-    activeScenario: any, // Type will match your activeScenario structure
+    activeScenario: ActiveScenario,
     channelId: string,
     message: string
   ): Promise<void> {
-    console.log(
-      `[SCENARIO] Handling message in scenario ${activeScenario.scenario.scenarioId}`
-    );
+    // --- START Pre-start Check ---
+    if (activeScenario.status === "pending_start") {
+      if (
+        channelId === activeScenario.businessChannelId &&
+        message.trim().toUpperCase() === "START"
+      ) {
+        console.log(
+          `Starting scenario ${activeScenario.scenario.scenarioId} for user ${activeScenario.userId} after receiving START command.`
+        );
+        activeScenario.status = "active";
+        // Trigger initial bot messages now
+        await this.sendInitialBotMessages(activeScenario);
+        return; // Don't process START command further
+      } else {
+        // Optionally remind the user to type START
+        console.log(
+          `Ignoring message from user ${activeScenario.userId} while scenario is pending start.`
+        );
+        try {
+          const csBot = botManager.getBot("cs-bot");
+          if (csBot) {
+            await csBot.app.client.chat.postMessage({
+              channel: activeScenario.businessChannelId, // Remind in business channel
+              text: `Please type \`START\` in this channel to begin the simulation.`,
+              username: "Drill Master",
+            });
+          }
+        } catch (remindErr) {
+          /* Ignore error sending reminder */
+        }
+        return; // Ignore other messages while pending
+      }
+    }
+    // --- END Pre-start Check ---
 
-    // Determine which channel the message came from
+    // --- START Resolved Check ---
+    if (activeScenario.status === "resolved") {
+      console.log(
+        `Ignoring message from user ${activeScenario.userId} as scenario is resolved.`
+      );
+      return; // Don't process messages after resolution
+    }
+    // --- END Resolved Check ---
+
+    // --- Original handleUserMessage logic starts here ---
     const isBusinessChannel = channelId === activeScenario.businessChannelId;
     const isIncidentChannel = channelId === activeScenario.incidentChannelId;
 
     if (!isBusinessChannel && !isIncidentChannel) {
-      console.log(
-        `[SCENARIO] Warning: Channel ${channelId} doesn't match either channel in the scenario`
-      );
-      console.log(
-        `[SCENARIO] Business: ${activeScenario.businessChannelId}, Incident: ${activeScenario.incidentChannelId}`
+      console.warn(
+        `[SCENARIO] Warning: Channel ${channelId} doesn't match known channels for active scenario ${activeScenario.scenario.scenarioId}`
       );
       return;
     }
 
     const channelType = isBusinessChannel ? "business" : "incident";
-    console.log(`[SCENARIO] Message is for the ${channelType} channel`);
 
-    // Get userId from scenario
     const userId = activeScenario.userId;
 
-    // Add user message to history
-    const userMessage = {
+    const mentionedBotIds: string[] = [];
+    const mentionRegex = /<@(\w+)>/g;
+    let match;
+    const allBots = botManager.getAllBots();
+
+    while ((match = mentionRegex.exec(message)) !== null) {
+      const mentionedSlackId = match[1];
+      const foundBot = allBots.find(
+        (bot) => bot.slackUserId === mentionedSlackId
+      );
+      if (foundBot) {
+        const internalBotId = foundBot.config.id;
+        if (!mentionedBotIds.includes(internalBotId)) {
+          mentionedBotIds.push(internalBotId);
+        }
+      }
+    }
+
+    const userMessage: UserMessage = {
       userId,
       channel: channelType,
       content: message,
@@ -714,57 +545,17 @@ class ScenarioService {
     };
 
     activeScenario.messageHistory.push(userMessage);
-    console.log(
-      `[SCENARIO] Added message to history. History size: ${activeScenario.messageHistory.length}`
-    );
 
-    // Send acknowledgement message to channel to confirm receipt
-    try {
-      const { botManager } = require("./botManager");
-      const csBot = botManager.getBot("cs-bot");
-
-      // Optional debug response to show we're processing
-      if (csBot) {
-        try {
-          await csBot.app.client.chat.postMessage({
-            channel: channelId,
-            text: `[DEBUG] Processing your message: "${message.substring(
-              0,
-              30
-            )}${message.length > 30 ? "..." : ""}"`,
-            username: "Debug Bot",
-          });
-        } catch (err) {
-          console.error(`[SCENARIO] Error sending debug response:`, err);
-        }
-      }
-    } catch (err) {
-      console.error(`[SCENARIO] Error getting bot:`, err);
-    }
-
-    // Limit message history size
     if (activeScenario.messageHistory.length > this.MAX_HISTORY_ITEMS) {
       activeScenario.messageHistory = activeScenario.messageHistory.slice(
         activeScenario.messageHistory.length - this.MAX_HISTORY_ITEMS
       );
-      console.log(
-        `[SCENARIO] Trimmed history to ${this.MAX_HISTORY_ITEMS} items`
-      );
     }
 
-    // Prepare context for LLM
-    const context = {
-      scenarioData: activeScenario.scenario,
-      currentStep: activeScenario.currentStep,
-      completedObjectives: activeScenario.completedObjectives,
-      awardedBadges: activeScenario.awardedBadges,
-      userMessage: {
-        channel: channelType,
-        content: message,
-      },
-      messageHistory: activeScenario.messageHistory.map((msg: any) => {
+    const filteredHistory = activeScenario.messageHistory
+      .filter((msg) => msg.channel === channelType)
+      .map((msg: UserMessage | SystemBotResponse) => {
         if ("userId" in msg) {
-          // It's a user message
           return {
             type: "user" as const,
             channel: msg.channel,
@@ -772,7 +563,6 @@ class ScenarioService {
             timestamp: msg.timestamp.toISOString(),
           };
         } else {
-          // It's a bot message
           return {
             type: "bot" as const,
             from: msg.from,
@@ -782,42 +572,128 @@ class ScenarioService {
             timestamp: msg.timestamp.toISOString(),
           };
         }
-      }),
+      });
+
+    const context = {
+      initialSituation: activeScenario.scenario.initialSituation,
+      overallGoal: activeScenario.scenario.overallGoal,
+      keyMilestones: activeScenario.keyMilestones || [],
+      awardedBadges: activeScenario.awardedBadges,
+      userMessage: {
+        channel: channelType,
+        content: message,
+        mentionedBotIds: mentionedBotIds,
+      },
+      messageHistory: filteredHistory,
     };
 
-    console.log(
-      `[SCENARIO] Prepared LLM context with ${context.messageHistory.length} message history items`
-    );
-    console.log(`[SCENARIO] Current step: ${activeScenario.currentStep}`);
-
-    // Send to LLM for processing
-    console.log(`[SCENARIO] Sending message to LLM for processing...`);
     try {
       const llmResponse = (await this.llmService.processScenarioMessage(
         this.systemPrompt,
         context
-      )) as any; // Type will match your LLMResponse structure
+      )) as LLMResponse;
 
       console.log(
-        `[SCENARIO] Received LLM response with ${llmResponse.botResponses.length} bot responses`
+        "[DEBUG] Raw LLM Response:",
+        JSON.stringify(llmResponse, null, 2)
       );
 
-      // Update scenario state based on LLM response
-      this.updateScenarioState(activeScenario, llmResponse);
-      console.log(
-        `[SCENARIO] Updated scenario state. Current step: ${activeScenario.currentStep}`
-      );
+      if (
+        llmResponse.simulationStatus?.awardedBadges &&
+        llmResponse.simulationStatus.awardedBadges.length > 0
+      ) {
+        activeScenario.awardedBadges = [
+          ...activeScenario.awardedBadges,
+          ...llmResponse.simulationStatus.awardedBadges.filter(
+            (badge) => !activeScenario.awardedBadges.includes(badge)
+          ),
+        ];
+        console.log(
+          `[SCENARIO] Badges awarded: ${llmResponse.simulationStatus.awardedBadges.join(
+            ", "
+          )}`
+        );
+      }
 
-      // Send bot responses
+      // --- Check for Resolution ---
+      if (llmResponse.simulationStatus?.isResolved === true) {
+        console.log(
+          `[SCENARIO] LLM signaled resolution for scenario ${activeScenario.scenario.scenarioId}, user ${userId}.`
+        );
+        activeScenario.status = "resolved";
+
+        // Send immediate final bot responses (likely congratulations)
+        await this.sendBotResponses(activeScenario, llmResponse.botResponses);
+
+        // --- Schedule the final summary and cleanup ---
+        const finalizationDelay = 45 * 1000; // 45 seconds delay
+        console.log(
+          `[SCENARIO] Scheduling final summary and cleanup in ${
+            finalizationDelay / 1000
+          } seconds for user ${userId}.`
+        );
+
+        setTimeout(() => {
+          this.sendFinalSummaryAndArchive(activeScenario.userId);
+        }, finalizationDelay);
+
+        return; // Stop processing this message further, but allow existing timers to run
+      }
+      // --- END Check for Resolution ---
+
+      if (llmResponse.narrativeResponse) {
+        try {
+          const csBot = botManager.getBot("cs-bot");
+          if (csBot) {
+            await csBot.app.client.chat.postMessage({
+              channel: channelId,
+              text: `_${llmResponse.narrativeResponse}_`,
+              username: "Narrator",
+            });
+          } else {
+            console.warn(
+              "[SCENARIO] CS-Bot not found, cannot send narrative response."
+            );
+          }
+        } catch (narrativeErr) {
+          console.error(
+            "[SCENARIO] Error sending narrative response:",
+            narrativeErr
+          );
+        }
+        await new Promise((resolve) => setTimeout(resolve, 750));
+      }
+
       await this.sendBotResponses(activeScenario, llmResponse.botResponses);
+
+      if (
+        llmResponse.scheduledResponses &&
+        llmResponse.scheduledResponses.length > 0
+      ) {
+        for (const scheduled of llmResponse.scheduledResponses) {
+          if (scheduled.delay > 0 && scheduled.response) {
+            const delayMs = scheduled.delay * 1000;
+            setTimeout(() => {
+              console.log(
+                `[DEBUG] setTimeout fired for scheduled response from ${scheduled.response.from} after ${scheduled.delay}s delay.`
+              );
+              this.sendScheduledResponse(
+                activeScenario.userId,
+                scheduled.response
+              );
+            }, delayMs);
+          } else {
+            console.warn(
+              "[SCENARIO] Invalid scheduled response object found:",
+              scheduled
+            );
+          }
+        }
+      }
     } catch (err) {
       console.error(`[SCENARIO] Error processing message with LLM:`, err);
-
-      // Send error message to channel
       try {
-        const { botManager } = require("./botManager");
         const csBot = botManager.getBot("cs-bot");
-
         if (csBot) {
           await csBot.app.client.chat.postMessage({
             channel: channelId,
@@ -828,6 +704,127 @@ class ScenarioService {
       } catch (sendErr) {
         console.error(`[SCENARIO] Error sending error message:`, sendErr);
       }
+    }
+  }
+
+  private async sendScheduledResponse(
+    userId: string,
+    response: BotResponse
+  ): Promise<void> {
+    console.log(
+      `[DEBUG] Attempting to send scheduled response for user ${userId}, from: ${response.from}`
+    );
+    const activeScenario = this.getActiveScenario(userId);
+    if (!activeScenario) {
+      console.log(
+        `[DEBUG] Scenario for user ${userId} ended before scheduled response from ${response.from} could be sent.`
+      );
+      return;
+    }
+
+    try {
+      const bot = botManager.getBot(response.from);
+      if (!bot) {
+        console.error(
+          `[DEBUG] Bot ${response.from} not found for scheduled response.`
+        );
+        return;
+      }
+
+      const channelId =
+        response.channel === "business"
+          ? activeScenario.businessChannelId
+          : activeScenario.incidentChannelId;
+
+      // --- Format mentions before sending ---
+      const formattedMessage = this.formatMentions(response.message);
+
+      const result = await bot.app.client.chat.postMessage({
+        channel: channelId,
+        text: formattedMessage, // Use formatted message
+        username: `${response.from} (${response.role})`,
+      });
+
+      if (result.ok) {
+        console.log(
+          `[DEBUG] Successfully sent scheduled response from ${response.from} to ${channelId}.`
+        );
+        // Store original message in history
+        activeScenario.messageHistory.push({
+          from: response.from,
+          role: response.role,
+          channel: response.channel,
+          message: response.message, // Store original message
+          timestamp: new Date(),
+        });
+        if (activeScenario.messageHistory.length > this.MAX_HISTORY_ITEMS) {
+          activeScenario.messageHistory = activeScenario.messageHistory.slice(
+            activeScenario.messageHistory.length - this.MAX_HISTORY_ITEMS
+          );
+        }
+      } else {
+        console.error(
+          `[DEBUG] Failed to send scheduled response via API: ${JSON.stringify(
+            result
+          )}`
+        );
+      }
+    } catch (error) {
+      console.error(
+        `[DEBUG] Error caught in sendScheduledResponse for ${response.from}:`,
+        error
+      );
+    }
+  }
+
+  // --- ADD new method to send summary and schedule archival ---
+  private async sendFinalSummaryAndArchive(userId: string): Promise<void> {
+    const activeScenario = this.getActiveScenario(userId);
+    // Double-check scenario still exists and is resolved (though it should be)
+    if (!activeScenario || activeScenario.status !== "resolved") {
+      console.log(
+        `[SCENARIO] Final summary requested for user ${userId}, but scenario not found or not resolved.`
+      );
+      return;
+    }
+    console.log(`[SCENARIO] Sending final summary for user ${userId}.`);
+
+    try {
+      const feedbackTips = `\n\n*Feedback & Tips:*\n- Effective delegation to bots based on their roles (e.g., Network Engineer for traffic, Security Analyst for logs) is key.\n- Clearly stating desired actions helps guide the team.\n- In a real DDoS, quick identification and implementation of WAF rules or IP blocks are crucial first steps.\n- Always verify mitigation effectiveness before declaring resolution.`;
+      const archiveNotice = `\n\n_These simulation channels will be archived in approximately 5 minutes._`;
+      const summary = `>*Congratulations!* You've successfully resolved the **${
+        activeScenario.scenario.scenarioTitle
+      }** incident.\n>\n>*Summary:*\n>- You effectively coordinated the team to investigate the performance degradation.\n>- You guided the identification and mitigation of the root cause.\n>- Normal service was restored.\n${
+        activeScenario.awardedBadges.length > 0
+          ? `>\n>*Badges Awarded:* ${activeScenario.awardedBadges.join(", ")}`
+          : ""
+      }\n>${feedbackTips}\n>${archiveNotice}`;
+
+      const csBot = botManager.getBot("cs-bot");
+      if (csBot) {
+        await csBot.app.client.chat.postMessage({
+          channel: activeScenario.businessChannelId,
+          text: summary,
+          username: "Drill Master",
+        });
+        console.log(`Resolution summary sent for user ${userId}.`);
+
+        // Schedule channel cleanup 5 minutes after summary is sent
+        const cleanupDelay = 5 * 60 * 1000;
+        setTimeout(() => this.endScenario(userId), cleanupDelay);
+        console.log(
+          `Scheduled channel cleanup for user ${userId} in 5 minutes.`
+        );
+      } else {
+        console.error(
+          "CS-Bot not found, cannot send resolution summary or schedule cleanup."
+        );
+      }
+    } catch (summaryErr) {
+      console.error(
+        "Error sending resolution summary or scheduling cleanup:",
+        summaryErr
+      );
     }
   }
 }

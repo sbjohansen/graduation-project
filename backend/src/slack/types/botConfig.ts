@@ -14,4 +14,5 @@ export interface BotInstance {
   config: BotConfig;
   app: any; // Slack Bolt App instance
   isActive: boolean;
+  slackUserId?: string;
 }

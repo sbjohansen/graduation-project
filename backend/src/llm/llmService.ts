@@ -13,13 +13,14 @@ interface MessageHistoryItem {
 }
 
 interface LLMScenarioContext {
-  scenarioData: any;
-  currentStep: number;
-  completedObjectives: Record<number, string[]>;
+  initialSituation: string;
+  overallGoal: string;
+  keyMilestones?: string[];
   awardedBadges: string[];
   userMessage: {
     channel: string;
     content: string;
+    mentionedBotIds?: string[];
   };
   messageHistory?: MessageHistoryItem[];
 }
@@ -102,9 +103,9 @@ export class LLMService {
       {
         role: "user",
         content: JSON.stringify({
-          scenarioDetails: context.scenarioData,
-          currentStep: context.currentStep,
-          completedObjectives: context.completedObjectives,
+          initialSituation: context.initialSituation,
+          overallGoal: context.overallGoal,
+          keyMilestones: context.keyMilestones || [],
           awardedBadges: context.awardedBadges,
           userMessage: context.userMessage,
           messageHistory: context.messageHistory || [],
