@@ -1,5 +1,5 @@
 {
-  "scenarioId": "drill-imposter",
+  "scenarioId": "drill-3",
   "scenarioTitle": "Data Leak Investigation",
   "scenarioDescription": "User data has been found exposed on hacking forums. Investigate the source of the leak while navigating potentially deceptive behavior from team members.",
   "difficulty": "Hard",

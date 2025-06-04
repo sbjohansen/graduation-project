@@ -6,7 +6,8 @@
     "install-all": "npm install && cd frontend && npm install && cd ../backend && npm install && cd ../slack-bot && npm install",
     "start": "npx concurrently \"cd frontend && npm start\" \"cd backend && npm start\" \"cd slack-bot && npm start\"",
     "dev": "npx concurrently \"cd frontend && npm run dev\" \"cd backend && npm run dev\"",
-    "build": "cd frontend && npm run build && cd ../backend && npm run build && cd ../slack-bot && npm run build"
+    "build": "cd frontend && npm run build && cd ../backend && npm run build && cd ../slack-bot && npm run build",
+    "setup": "npm install --legacy-peer-deps && cd frontend && npm install --legacy-peer-deps && cd ../backend && npm install --legacy-peer-deps && npx prisma generate && npx prisma migrate dev --name init && cd .."
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
