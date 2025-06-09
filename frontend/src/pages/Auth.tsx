@@ -79,18 +79,33 @@ const Auth = () => {
 
   return (
     <>
-      <PageTitle title={isLogin ? 'Login' : 'Register'} />
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-md mx-auto">
-          <h1 className="text-2xl font-bold mb-6 text-center">{isLogin ? 'Login' : 'Register'}</h1>
-          {errorMessage && (
-            <div className="mb-4 p-3 bg-red-100 text-red-700 rounded">{errorMessage}</div>
-          )}
-          {isLogin ? (
-            <LoginForm onSubmit={handleLogin} isLoading={isLoading} />
-          ) : (
-            <RegisterForm onSubmit={handleRegister} isLoading={isLoading} />
-          )}
+      <PageTitle title={isLogin ? 'Sign In - SecureShield' : 'Create Account - SecureShield'} />
+      <div className="min-h-screen w-full relative overflow-hidden bg-gradient-to-br from-background via-background to-background/95">
+        {/* Background decorative elements */}
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 via-transparent to-purple-50/50 dark:from-blue-950/20 dark:via-transparent dark:to-purple-950/20" />
+        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
+        
+        {/* Floating shapes */}
+        <div className="absolute top-20 left-10 w-32 h-32 bg-blue-500/10 rounded-full blur-xl animate-pulse" />
+        <div className="absolute bottom-20 right-10 w-40 h-40 bg-purple-500/10 rounded-full blur-xl animate-pulse" style={{ animationDelay: '2s' }} />
+        <div className="absolute top-1/2 left-1/4 w-24 h-24 bg-green-500/10 rounded-full blur-xl animate-pulse" style={{ animationDelay: '4s' }} />
+        
+        <div className="container mx-auto px-4 py-16 relative z-10">
+          <div className="flex items-center justify-center min-h-[calc(100vh-8rem)]">
+            {isLogin ? (
+              <LoginForm 
+                onSubmit={handleLogin} 
+                errorMessage={errorMessage}
+                isLoading={isLoading} 
+              />
+            ) : (
+              <RegisterForm 
+                onSubmit={handleRegister} 
+                errorMessage={errorMessage}
+                isLoading={isLoading} 
+              />
+            )}
+          </div>
         </div>
       </div>
     </>

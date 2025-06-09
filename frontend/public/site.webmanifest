@@ -1,0 +1,21 @@
+{
+  "name": "SecureShield Solutions - Cybersecurity Training Platform",
+  "short_name": "SecureShield",
+  "description": "AI-powered cybersecurity incident response training platform",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2563eb",
+  "orientation": "portrait-primary",  "icons": [
+    {
+      "src": "/shield-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ],
+  "categories": ["education", "security", "training"],
+  "lang": "en",
+  "dir": "ltr",
+  "scope": "/",
+  "prefer_related_applications": false
+}

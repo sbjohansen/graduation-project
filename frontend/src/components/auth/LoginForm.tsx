@@ -1,22 +1,21 @@
 import { useState } from 'react';
-import { cn } from '../../lib/utils';
+import { Link } from 'react-router-dom';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
+import { Shield, LogIn } from 'lucide-react';
 
-interface LoginFormProps extends React.ComponentPropsWithoutRef<'div'> {
+interface LoginFormProps {
   onSubmit: (email: string, password: string) => Promise<void>;
   errorMessage?: string;
   isLoading?: boolean;
 }
 
 export function LoginForm({
-  className,
   onSubmit,
   errorMessage,
   isLoading = false,
-  ...props
 }: LoginFormProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -27,71 +26,96 @@ export function LoginForm({
   };
 
   return (
-    <div className={cn('flex flex-col gap-6', className)} {...props}>
-      <Card>
-        <CardHeader className="text-center">
-          <CardTitle className="text-xl">Welcome back</CardTitle>
-          <CardDescription>Login to your account</CardDescription>
+    <div className="w-full max-w-md mx-auto">
+      {/* Hero Section */}
+      <div className="text-center mb-8">
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 mb-4">
+          <Shield className="h-8 w-8 text-white" />
+        </div>
+        <h1 className="text-3xl font-bold mb-2 gradient-text">Welcome Back</h1>
+        <p className="text-muted-foreground">Continue your cybersecurity training</p>
+      </div>
+
+      <Card className="card-glass">
+        <CardHeader className="text-center pb-4">
+          <CardTitle className="flex items-center justify-center gap-2 text-xl">
+            <LogIn className="h-5 w-5" />
+            Sign In
+          </CardTitle>
+          <CardDescription>
+            Access your training dashboard
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit}>
-            <div className="grid gap-6">
-              {errorMessage && (
-                <div className="p-2 text-sm bg-red-100 border border-red-400 text-red-700 rounded">
-                  {errorMessage}
-                </div>
-              )}
-              <div className="grid gap-6">
-                <div className="grid gap-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="m@example.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <div className="flex items-center">
-                    <Label htmlFor="password">Password</Label>
-                    <a href="#" className="ml-auto text-sm underline-offset-4 hover:underline">
-                      Forgot your password?
-                    </a>
-                  </div>
-                  <Input
-                    id="password"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                  />
-                </div>
-                <Button type="submit" variant="outline" className="w-full" disabled={isLoading}>
-                  {isLoading ? 'Signing in...' : 'Login'}
-                </Button>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {errorMessage && (
+              <div className="p-3 text-sm bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 rounded-lg">
+                {errorMessage}
               </div>
-              <div className="text-center text-sm">
-                Don&apos;t have an account?{' '}
-                <a
-                  href="#"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    document.dispatchEvent(new CustomEvent('toggle-auth', {}));
-                  }}
-                  className="underline underline-offset-4"
-                >
-                  Sign up
-                </a>
+            )}
+            
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email Address</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="Enter your email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className="h-11"
+                />
               </div>
+              
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password">Password</Label>
+                  <button
+                    type="button"
+                    className="text-sm text-primary hover:underline"
+                  >
+                    Forgot password?
+                  </button>
+                </div>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  className="h-11"
+                />
+              </div>
+              
+              <Button 
+                type="submit" 
+                className="w-full h-11 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700" 
+                disabled={isLoading}
+              >
+                {isLoading ? 'Signing In...' : 'Sign In'}
+              </Button>
+            </div>
+            
+            <div className="text-center text-sm text-muted-foreground pt-4">
+              Don't have an account?{' '}
+              <button
+                type="button"
+                onClick={() => document.dispatchEvent(new CustomEvent('toggle-auth', {}))}
+                className="text-primary hover:underline font-medium"
+              >
+                Create one here
+              </button>
             </div>
           </form>
         </CardContent>
       </Card>
-      <div className="text-balance text-center text-xs text-muted-foreground [&_a]:underline [&_a]:underline-offset-4 [&_a]:hover:text-primary">
-        By clicking continue, you agree to our <a href="#">Terms of Service</a> and{' '}
-        <a href="#">Privacy Policy</a>.
+        <div className="text-center text-xs text-muted-foreground mt-6">
+        By signing in, you agree to our{' '}
+        <Link to="/terms" className="text-primary hover:underline">Terms of Service</Link>
+        {' '}and{' '}
+        <Link to="/privacy" className="text-primary hover:underline">Privacy Policy</Link>
       </div>
     </div>
   );

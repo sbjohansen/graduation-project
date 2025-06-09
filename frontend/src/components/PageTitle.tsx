@@ -7,12 +7,12 @@ interface PageTitleProps {
 
 export const PageTitle = ({ title }: PageTitleProps) => {
   useEffect(() => {
-    document.title = `${title} | CyberShield Labs`;
+    document.title = `${title} | SecureShield Solutions`;
   }, [title]);
 
   return (
     <Helmet>
-      <title>{`${title} | CyberShield Labs`}</title>
+      <title>{`${title} | SecureShield Solutions`}</title>
     </Helmet>
   );
 };

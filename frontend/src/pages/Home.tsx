@@ -1,14 +1,22 @@
-import HeroSection from '../components/home/HeroSection';
 import { PageTitle } from '../components/PageTitle';
+import {
+  HeroSection,
+  FeaturesSection,
+  TrainingProcessSection,
+  TestimonialsSection,
+  CTASection
+} from '../components/home';
 
 const Home = () => {
   return (
     <>
-      <PageTitle title="Home" />
-      <div className="flex flex-col relative z-10">
-        <div className="hero-container relative">
-          <HeroSection />
-        </div>
+      <PageTitle title="SecureShield Solutions - AI-Powered Cybersecurity Training" />
+      <div className="min-h-screen">
+        <HeroSection />
+        <FeaturesSection />
+        <TrainingProcessSection />
+        <TestimonialsSection />
+        <CTASection />
       </div>
     </>
   );
