@@ -5,7 +5,7 @@
   "difficulty": "Easy",
   "length": "Short",
   "initialSituation": "John (Security Analyst) receives a forwarded email from an employee marked 'Suspicious - urgent look needed?'. The email appears to be from IT asking the user to click a link to verify their account due to recent 'unusual activity'. Shortly after, another similar report arrives from a different department, mentioning an attachment.",
-  "overallGoal": "Analyze the reported suspicious emails to confirm they are part of a phishing campaign. Identify the threat vector (malicious link/attachment, credential harvesting). Determine the scope (users affected). Warn employees. Implement technical mitigations (e.g., block sender/domain, flag external emails, analyze payload safely, update filters). Investigate and contain potential impact (check for compromised accounts/systems). Confirm threat containment and provide final guidance. Ensure the team lead (user) makes key decisions.",
+  "overallGoal": "Guide the incident manager through a methodical phishing investigation. The incident manager should: (1) Assign John to analyze the suspicious emails to confirm they are phishing, (2) Have team identify threat vectors (malicious link/attachment, credential harvesting), (3) Determine scope by checking for affected users, (4) Direct implementation of technical mitigations (block sender/domain, update filters, analyze payloads safely), (5) Investigate potential impact (compromised accounts/systems), (6) Ensure proper containment and provide final guidance. Bots should wait for instructions, ask clarifying questions, and suggest next steps only when the incident manager appears stuck.",
   "initialBotMessages": [
     {
       "from": "cs-bot",
@@ -18,30 +18,28 @@
       "role": "system",
       "channel": "incident",
       "message": "Welcome to the Incident Channel for the 'Suspicious Email Reports' drill. Technical discussion here."
+    },    {
+      "from": "john",
+      "role": "security_analyst",
+      "channel": "incident",
+      "message": "Suspicious email reported by Sales: [Subject: Urgent Account Verification Required]. Appears to be credential phishing via link. @incident-manager Should I begin analysis?"
     },
     {
       "from": "john",
       "role": "security_analyst",
       "channel": "incident",
-      "message": "Received a forwarded email marked suspicious from Sales: [Subject: Urgent Account Verification Required]. Looks like a credential phishing attempt via a link. Starting analysis."
-    },
-    {
-      "from": "john",
-      "role": "security_analyst",
-      "channel": "incident",
-      "message": "Just got another report, this one from Marketing with [Subject: Updated HR Policy Document] and includes an attachment. Also looks suspicious. Investigating both."
-    },
-    {
+      "message": "Second report from Marketing: [Subject: Updated HR Policy Document] with attachment. Also suspicious. @incident-manager What's our investigation priority?"
+    },    {
       "from": "hanna",
       "role": "customer_care",
       "channel": "business",
-      "message": "Hearing some worried chatter about unusual emails asking for logins or with strange attachments. Is this something widespread we need to address?"
+      "message": "Receiving worried reports about unusual emails requesting logins or with strange attachments. @incident-manager Is this widespread? Do we need to warn customers?"
     },
     {
       "from": "pete",
       "role": "ceo",
       "channel": "business",
-      "message": "What's this about suspicious emails? Is company data or access at risk? John, Hanna - give me an assessment quickly."
+      "message": "@incident-manager What's this about suspicious emails? Is company data or access at risk? Need immediate assessment."
     }
   ]
 }

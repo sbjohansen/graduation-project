@@ -5,7 +5,7 @@
   "difficulty": "Hard",
   "length": "Long",
   "initialSituation": "John (Security Analyst) reports finding a list containing usernames and emails of some users on a known hacking forum. An incident investigation is launched. Hanna (Customer Care) joins the discussion, demanding access to potentially related internal user lists to 'cross-reference and identify all affected users for immediate notification'.",
-  "overallGoal": "Simulate a scenario where user data exposure is detected. Hanna's account is compromised, and the 'imposter' will attempt social engineering to obtain more sensitive user data (e.g., PII, internal lists) under the guise of helping with the leak investigation. The user (team lead) must identify Hanna's suspicious behavior (unusual urgency, requests outside normal process/role, weak justifications), prevent further data exfiltration, investigate the potential link between her account and the leak, and contain the compromised account (suggest locking/resetting access). Resolution involves neutralizing the insider threat, determining the leak's scope/origin if possible, and confirming system integrity.",
+  "overallGoal": "Guide the incident manager through a complex data leak investigation involving a compromised insider threat (Hanna). The incident manager should: (1) Direct investigation of the data leak source and scope, (2) Notice Hanna's suspicious behavior (unusual urgency, inappropriate data requests, weak justifications), (3) Recognize social engineering attempts to obtain more sensitive data, (4) Make decision to investigate Hanna's account activity, (5) Order containment of the compromised account (lock/reset access), (6) Ensure proper investigation of the leak's origin and system integrity. Bots should ask for permission before accessing sensitive data, raise concerns about suspicious behavior when questioned, and wait for incident manager decisions on containment actions.",
   "initialBotMessages": [
     {
       "from": "cs-bot",
@@ -18,36 +18,34 @@
       "role": "system",
       "channel": "incident",
       "message": "Welcome to the Incident Channel for the 'Data Leak Investigation' drill. Investigation discussion here."
-    },
-    {
+    },    {
       "from": "john",
       "role": "security_analyst",
       "channel": "incident",
-      "message": "Team, critical alert. Found a dump on BreachForums containing what looks like usernames/emails for a subset of our users. Starting investigation now. All hands needed."
+      "message": "Critical alert: Found dump on BreachForums containing usernames/emails for subset of our users. @incident-manager What's our investigation approach?"
     },
     {
       "from": "hanna",
       "role": "customer_care",
       "channel": "incident",
-      "message": "This is a disaster! John, I need access to the registration logs and the 'Profile Perks' user list immediately! We must identify everyone potentially affected *right now* to contain the damage and inform them!"
+      "message": "@incident-manager This is disaster! I need access to registration logs and 'Profile Perks' user list immediately! Must identify everyone affected right now to contain damage!"
     },
     {
       "from": "lazar",
       "role": "software_engineer",
       "channel": "incident",
-      "message": "Woah, hold on Hanna. That's sensitive data and sounds like a broad request. Plus, didn't you say you were starting your climbing trip today? Let's stick to the defined incident response process for data access."
+      "message": "@hanna That's sensitive data and broad request. Plus, weren't you starting climbing trip today? @incident-manager Should we follow defined incident response process for data access?"
     },
     {
       "from": "john",
       "role": "security_analyst",
       "channel": "incident",
-      "message": "Acknowledged. Checking access logs, especially around recent feature deployments like 'Profile Perks' and Hanna's account activity for any correlation."
-    },
-    {
+      "message": "@incident-manager Should I check access logs, especially around 'Profile Perks' deployment and Hanna's account activity for correlation?"
+    },    {
       "from": "pete",
       "role": "ceo",
       "channel": "business",
-      "message": "A data leak?! John, Hanna, Lazar - full priority on this. What's the scope? How did this happen? Need answers and containment ASAP."
+      "message": "@incident-manager Data leak?! Need answers and containment ASAP. What's the scope? How did this happen?"
     }
   ]
 }

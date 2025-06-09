@@ -5,7 +5,7 @@
   "difficulty": "Medium",
   "length": "Medium",
   "initialSituation": "It's launch day for 'Pete's Big Day 2.0'. Initial signs are good, but suddenly the site becomes extremely slow. Monitoring shows a massive, unexpected spike in traffic directed primarily at the login and checkout APIs. Customers are complaining of timeouts and failed checkouts.",
-  "overallGoal": "Identify the anomalous traffic pattern as a DDoS attack, implement effective DDoS mitigation techniques (e.g., IP blocking, rate limiting, WAF rules) to block the malicious traffic while allowing legitimate users, restore normal website performance and stability, confirm resolution, and ensure the team lead (user) makes key decisions.",
+  "overallGoal": "Guide the incident manager through DDoS attack response. The incident manager should: (1) Direct technical team to investigate the traffic anomaly and identify it as a DDoS attack, (2) Coordinate implementation of mitigation techniques (IP blocking, rate limiting, WAF rules), (3) Monitor effectiveness and direct adjustments, (4) Ensure legitimate traffic can still reach the site, (5) Confirm performance restoration and business continuity. Bots should provide status updates when asked, suggest mitigation strategies when the incident manager requests guidance, and wait for explicit instructions before taking action.",
   "initialBotMessages": [
     {
       "from": "cs-bot",
@@ -36,18 +36,17 @@
       "role": "security_engineer",
       "channel": "incident",
       "message": "Copy that, Peter. Security monitoring is active. Watching for any unusual activity."
-    },
-    {
+    },    {
       "from": "pete",
       "role": "ceo",
       "channel": "business",
-      "message": "Hold on... what's going on? The site is crawling! Reports are flooding in about website slowdowns and customers can't check out! This is turning into a disaster - urgent fix needed NOW!"
+      "message": "@incident-manager What's going on? The site is crawling! Reports flooding in about slowdowns and failed checkouts! This is disaster - need urgent fix NOW!"
     },
     {
       "from": "hanna",
       "role": "customer_care",
       "channel": "business",
-      "message": "Confirming Pete, we're seeing a surge in customer complaints about slow loading and failed checkouts. Sentiment is turning negative quickly."
+      "message": "Confirming surge in customer complaints about slow loading and failed checkouts. Sentiment turning negative quickly. @incident-manager Should I prepare damage control statement?"
     }
   ]
 }

@@ -23,7 +23,7 @@ PETE_BOT_APP_TOKEN=xapp-pete-app-token
 
 # OpenAI Configuration
 OPENAI_API_KEY=sk-your-openai-api-key
-OPENAI_MODEL=gpt-4o-mini-2024-07-18
+OPENAI_MODEL=gpt-4.1-mini-2025-04-14
 OPENAI_API_ENDPOINT=https://api.openai.com/v1/chat/completions
 OPENAI_MAX_RETRIES=3
 OPENAI_RETRY_DELAY=1000

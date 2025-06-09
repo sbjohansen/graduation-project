@@ -47,6 +47,8 @@ interface ActiveScenario {
   keyMilestones?: string[];
   awardedBadges: string[];
   messageHistory: Array<UserMessage | SystemBotResponse>;
+  waitingForDecision?: boolean; // New field to track if bots are waiting for user decision
+  lastDecisionRequest?: Date; // Track when the last decision request was made
 }
 
 interface BotResponse {
@@ -63,10 +65,6 @@ interface LLMResponse {
   };
   botResponses: BotResponse[];
   narrativeResponse: string;
-  scheduledResponses?: {
-    delay: number;
-    response: BotResponse;
-  }[];
 }
 
 class ScenarioService {
@@ -74,13 +72,224 @@ class ScenarioService {
   private llmService: LLMService;
   private systemPrompt: string;
   private readonly MAX_HISTORY_ITEMS = 20;
-
+    // Inactivity timer management
+  private inactivityTimers: Map<string, NodeJS.Timeout> = new Map();
+  private readonly INACTIVITY_TIMEOUT_MS = 20000; // 20 seconds - reduced for better responsiveness
   constructor(llmServiceDep: LLMService) {
     this.llmService = llmServiceDep;
     this.systemPrompt = fs.readFileSync(
       path.join(__dirname, "../scenarios/system-prompt.md"),
       "utf8"
     );
+  }
+  /**
+   * Reset the inactivity timer for a user
+   */
+  private resetInactivityTimer(userId: string): void {
+    // Clear existing timer if it exists
+    const existingTimer = this.inactivityTimers.get(userId);
+    if (existingTimer) {
+      clearTimeout(existingTimer);
+      console.log(`[INACTIVITY] Cleared existing timer for user ${userId}`);
+    }
+
+    // Set new timer
+    const timer = setTimeout(() => {
+      this.handleInactivityTimeout(userId);
+    }, this.INACTIVITY_TIMEOUT_MS);
+
+    this.inactivityTimers.set(userId, timer);
+    console.log(`[INACTIVITY] Reset inactivity timer for user ${userId} (${this.INACTIVITY_TIMEOUT_MS}ms = ${this.INACTIVITY_TIMEOUT_MS/1000}s)`);
+  }
+
+  /**
+   * Clear the inactivity timer for a user
+   */
+  private clearInactivityTimer(userId: string): void {
+    const timer = this.inactivityTimers.get(userId);
+    if (timer) {
+      clearTimeout(timer);
+      this.inactivityTimers.delete(userId);
+      console.log(`[INACTIVITY] Cleared inactivity timer for user ${userId}`);
+    }
+  }
+  /**
+   * Handle inactivity timeout - send current history to LLM for follow-up
+   */
+  private async handleInactivityTimeout(userId: string): Promise<void> {
+    console.log(`[INACTIVITY] Handling inactivity timeout for user ${userId}`);
+    
+    const activeScenario = this.activeScenarios.get(userId);
+    if (!activeScenario) {
+      console.log(`[INACTIVITY] No active scenario found for user ${userId}`);
+      return;
+    }
+
+    if (activeScenario.status !== "active") {
+      console.log(`[INACTIVITY] Scenario not active for user ${userId}, skipping follow-up`);
+      return;
+    }
+
+    // Check if we're already waiting for a decision and it's been less than 60 seconds
+    if (activeScenario.waitingForDecision && activeScenario.lastDecisionRequest) {
+      const timeSinceLastRequest = Date.now() - activeScenario.lastDecisionRequest.getTime();
+      if (timeSinceLastRequest < 60000) { // Less than 60 seconds
+        console.log(`[INACTIVITY] Already waiting for decision from user ${userId}, not sending more messages`);
+        // Reset timer to continue monitoring
+        this.resetInactivityTimer(userId);
+        return;
+      }
+    }    try {      
+      // Check the conversation for recent task assignments vs just questions
+      const recentMessages = activeScenario.messageHistory.slice(-10);
+      const recentUserMessages = recentMessages.filter(msg => "userId" in msg) as UserMessage[];
+      const recentBotMessages = recentMessages.filter(msg => !("userId" in msg)) as SystemBotResponse[];
+      
+      // Look for actual task assignments from the user (like "John, analyze that email")
+      const hasRecentTaskAssignments = recentUserMessages.some(msg => {
+        const content = msg.content.toLowerCase();
+        return (
+          content.includes("analyze") ||
+          content.includes("check") ||
+          content.includes("investigate") ||
+          content.includes("look into") ||
+          content.includes("examine") ||
+          content.includes("review") ||
+          content.includes("block") ||
+          content.includes("implement")
+        ) && (
+          content.includes("john") ||
+          content.includes("mike") ||
+          content.includes("peter") ||
+          content.includes("lazar") ||
+          content.includes("hanna")
+        );
+      });
+      
+      // Look for bots asking initial questions without any assignments yet
+      const hasUnansweredQuestions = recentBotMessages.some(msg => 
+        (msg.message.includes("Should I begin") || 
+         msg.message.includes("What's our") ||
+         msg.message.includes("awaiting") ||
+         msg.message.includes("Need investigation orders")) &&
+        !hasRecentTaskAssignments
+      );
+
+      if (hasUnansweredQuestions && !hasRecentTaskAssignments) {
+        // Only send decision request if bots are genuinely waiting for initial assignments
+        console.log(`[INACTIVITY] Bots waiting for initial task assignments, sending decision request to user ${userId}`);
+        
+        const csBot = botManager.getBot("cs-bot");
+        if (csBot) {
+          const userMention = `<@${userId}>`; // Tag the actual user
+          await csBot.app.client.chat.postMessage({
+            channel: activeScenario.businessChannelId, // Send to business channel for visibility
+            text: `${userMention} Your team is waiting for initial task assignments. Please respond to continue the incident response.`,
+            username: "Incident Coordinator",
+          });
+        }
+
+        // Mark as waiting for decision
+        activeScenario.waitingForDecision = true;
+        activeScenario.lastDecisionRequest = new Date();
+        
+        // Reset timer to continue monitoring
+        this.resetInactivityTimer(userId);
+        return;
+      }      // If there are recent task assignments, let bots complete their work and report back
+      const taskCompletionMessage = hasRecentTaskAssignments ? 
+        `[SYSTEM: User <@${userId}> has been inactive for 20 seconds. Bots with assigned tasks MUST complete their work and report specific findings. CRITICAL RULES: (1) Complete assigned tasks and provide specific results. (2) MAXIMUM 1 bot responds. (3) Format: "[Task] complete. [Specific findings]. @incident-manager [Next question]?" (4) If no assigned tasks, stay SILENT.]` :
+        `[SYSTEM: User <@${userId}> has been inactive for 20 seconds. CRITICAL RULES: (1) If ANY bot has asked a question in recent messages, ALL bots MUST stay SILENT. (2) If information was already provided, do NOT repeat it. (3) MAXIMUM 1 bot responds with MAXIMUM 1 sentence. (4) Only provide NEW task completion updates or stay SILENT.]`;
+      
+      const context = {
+        initialSituation: activeScenario.scenario.initialSituation,
+        overallGoal: activeScenario.scenario.overallGoal,
+        keyMilestones: activeScenario.keyMilestones || [],
+        awardedBadges: activeScenario.awardedBadges,
+        userMessage: {
+          userId: userId,
+          channel: "system", // Indicate this is a system-triggered follow-up
+          content: taskCompletionMessage,
+          mentionedBotIds: [],
+        },
+        messageHistory: activeScenario.messageHistory
+          .slice(-this.MAX_HISTORY_ITEMS)
+          .map((msg: UserMessage | SystemBotResponse) => {
+            if ("userId" in msg) {
+              return {
+                type: "user" as const,
+                channel: msg.channel,
+                content: msg.content,
+                timestamp: msg.timestamp.toISOString(),
+              };
+            } else {
+              return {
+                type: "bot" as const,
+                from: msg.from,
+                role: msg.role,
+                channel: msg.channel,
+                content: msg.message,
+                timestamp: msg.timestamp.toISOString(),
+              };
+            }
+          }),
+      };
+
+      console.log(`[INACTIVITY] Requesting follow-up from LLM for user ${userId}`);
+      const llmResponse = await this.llmService.processScenarioMessage(
+        this.systemPrompt,
+        context
+      );
+      
+      // Process the response as usual, but reset the timer to continue the inactivity cycle
+      if (llmResponse.botResponses && llmResponse.botResponses.length > 0) {
+        console.log(`[INACTIVITY] Sending ${llmResponse.botResponses.length} follow-up responses for user ${userId}`);
+        await this.sendBotResponses(activeScenario, llmResponse.botResponses);
+        
+        // Check if any bot asked a question in the response
+        const askedQuestion = llmResponse.botResponses.some(response => 
+          response.message.includes("?") || 
+          response.message.includes("Should I") ||
+          response.message.includes("What") ||
+          response.message.includes("How")
+        );
+        
+        if (askedQuestion) {
+          activeScenario.waitingForDecision = true;
+          activeScenario.lastDecisionRequest = new Date();
+        }
+        
+        // Reset the timer to continue monitoring for more inactivity
+        this.resetInactivityTimer(userId);
+      } else {
+        console.log(`[INACTIVITY] No follow-up responses generated, resetting timer anyway`);
+        // Reset timer even if no responses to continue monitoring
+        this.resetInactivityTimer(userId);
+      }
+
+      // Handle other response elements if needed
+      if (llmResponse.simulationStatus?.awardedBadges && llmResponse.simulationStatus.awardedBadges.length > 0) {
+        activeScenario.awardedBadges = [
+          ...activeScenario.awardedBadges,
+          ...llmResponse.simulationStatus.awardedBadges.filter(
+            (badge) => !activeScenario.awardedBadges.includes(badge)
+          ),
+        ];
+      }
+
+      if (llmResponse.simulationStatus?.isResolved === true) {
+        this.updateScenarioStatus(activeScenario, "resolved");
+        await this.sendBotResponses(activeScenario, llmResponse.botResponses);
+        const finalizationDelay = 45 * 1000;
+        setTimeout(() => {
+          this.sendFinalSummaryAndArchive(activeScenario.userId);
+        }, finalizationDelay);
+        return;
+      }
+
+    } catch (error) {
+      console.error(`[INACTIVITY] Error handling inactivity timeout for user ${userId}:`, error);
+    }
   }
 
   async startScenario(
@@ -229,11 +438,11 @@ class ScenarioService {
             `Could not verify channel ${channelId} after 3 attempts, skipping message`
           );
           continue;
-        }
-
+        }        const formattedMessage = this.formatMentions(botMsg.message, activeScenario.userId);
+        
         const result = await bot.app.client.chat.postMessage({
           channel: channelId,
-          text: botMsg.message,
+          text: formattedMessage,
           username: `${botMsg.from} (${botMsg.role})`,
         });
 
@@ -254,7 +463,6 @@ class ScenarioService {
       }
     }
   }
-
   async processUserMessage(
     userId: string,
     channelId: string,
@@ -271,22 +479,38 @@ class ScenarioService {
       );
 
       if (activeScenario) {
+        // Update the user ID for future lookups
+        this.activeScenarios.delete(userId);
+        this.activeScenarios.set(activeScenario.userId, activeScenario);
       } else {
         console.log(
           `[SCENARIO] No active scenario found for user ${userId} or channel ${channelId}`
         );
         return;
       }
+    }    // Reset inactivity timer when user sends a message
+    this.resetInactivityTimer(activeScenario.userId);
+    
+    // Clear decision-waiting flag when user responds
+    if (activeScenario.waitingForDecision) {
+      console.log(`[INACTIVITY] User ${activeScenario.userId} responded, clearing waitingForDecision flag`);
+      activeScenario.waitingForDecision = false;
+      activeScenario.lastDecisionRequest = undefined;
     }
 
     await this.handleUserMessage(activeScenario, channelId, message);
   }
-
   // --- Helper function to format mentions ---
-  private formatMentions(messageText: string): string {
-    // Regex to find @ followed by bot names (adjust chars allowed in name if needed)
+  private formatMentions(messageText: string, userId?: string): string {
+    // First, replace @incident-manager with actual user ID if provided
+    let formattedMessage = messageText;
+    if (userId) {
+      formattedMessage = formattedMessage.replace(/@incident-manager/g, `<@${userId}>`);
+    }
+    
+    // Then handle bot mentions: Regex to find @ followed by bot names (adjust chars allowed in name if needed)
     const mentionRegex = /@([a-zA-Z0-9_\-]+)/g;
-    return messageText.replace(mentionRegex, (match, botId) => {
+    return formattedMessage.replace(mentionRegex, (match, botId) => {
       const bot = botManager.getBot(botId.toLowerCase()); // Use lowercase ID for lookup
       if (bot && bot.slackUserId) {
         return `<@${bot.slackUserId}>`; // Replace with Slack mention format
@@ -355,10 +579,8 @@ class ScenarioService {
             `[MESSAGE_TRACKER] Could not verify channel ${channelId} after 3 attempts, skipping message`
           );
           continue;
-        }
-
-        // --- Format mentions before sending ---
-        const formattedMessage = this.formatMentions(response.message);
+        }        // --- Format mentions before sending ---
+        const formattedMessage = this.formatMentions(response.message, activeScenario.userId);
 
         let messageSent = false;
         for (let retryCount = 0; retryCount < 3; retryCount++) {
@@ -416,7 +638,6 @@ class ScenarioService {
       }
     }
   }
-
   async endScenario(userId: string): Promise<void> {
     const activeScenario = this.activeScenarios.get(userId);
     if (!activeScenario) {
@@ -426,6 +647,10 @@ class ScenarioService {
       return;
     }
     console.log(`Ending scenario for user ${userId}.`);
+    
+    // Clear inactivity timer when ending scenario
+    this.clearInactivityTimer(userId);
+    
     try {
       await channelManager.deleteDrillChannels(
         activeScenario.businessChannelId,
@@ -461,15 +686,14 @@ class ScenarioService {
     message: string
   ): Promise<void> {
     // --- START Pre-start Check ---
-    if (activeScenario.status === "pending_start") {
-      if (
+    if (activeScenario.status === "pending_start") {      if (
         channelId === activeScenario.businessChannelId &&
         message.trim().toUpperCase() === "START"
-      ) {
-        console.log(
+      ) {        console.log(
           `Starting scenario ${activeScenario.scenario.scenarioId} for user ${activeScenario.userId} after receiving START command.`
         );
-        activeScenario.status = "active";
+        this.updateScenarioStatus(activeScenario, "active");
+        
         // Trigger initial bot messages now
         await this.sendInitialBotMessages(activeScenario);
         return; // Don't process START command further
@@ -613,14 +837,11 @@ class ScenarioService {
             ", "
           )}`
         );
-      }
-
-      // --- Check for Resolution ---
-      if (llmResponse.simulationStatus?.isResolved === true) {
-        console.log(
+      }      // --- Check for Resolution ---
+      if (llmResponse.simulationStatus?.isResolved === true) {        console.log(
           `[SCENARIO] LLM signaled resolution for scenario ${activeScenario.scenario.scenarioId}, user ${userId}.`
         );
-        activeScenario.status = "resolved";
+        this.updateScenarioStatus(activeScenario, "resolved");
 
         // Send immediate final bot responses (likely congratulations)
         await this.sendBotResponses(activeScenario, llmResponse.botResponses);
@@ -662,34 +883,11 @@ class ScenarioService {
           );
         }
         await new Promise((resolve) => setTimeout(resolve, 750));
-      }
+      }      await this.sendBotResponses(activeScenario, llmResponse.botResponses);
 
-      await this.sendBotResponses(activeScenario, llmResponse.botResponses);
-
-      if (
-        llmResponse.scheduledResponses &&
-        llmResponse.scheduledResponses.length > 0
-      ) {
-        for (const scheduled of llmResponse.scheduledResponses) {
-          if (scheduled.delay > 0 && scheduled.response) {
-            const delayMs = scheduled.delay * 1000;
-            setTimeout(() => {
-              console.log(
-                `[DEBUG] setTimeout fired for scheduled response from ${scheduled.response.from} after ${scheduled.delay}s delay.`
-              );
-              this.sendScheduledResponse(
-                activeScenario.userId,
-                scheduled.response
-              );
-            }, delayMs);
-          } else {
-            console.warn(
-              "[SCENARIO] Invalid scheduled response object found:",
-              scheduled
-            );
-          }
-        }
-      }
+      // Remove the old scheduled responses logic - we now use inactivity-based follow-ups
+      // The inactivity timer will trigger follow-ups if the user doesn't respond within 35 seconds
+      
     } catch (err) {
       console.error(`[SCENARIO] Error processing message with LLM:`, err);
       try {
@@ -706,75 +904,15 @@ class ScenarioService {
       }
     }
   }
-
+  /**
+   * @deprecated This method is no longer used. We now use inactivity-based follow-ups instead of scheduled responses.
+   */
   private async sendScheduledResponse(
     userId: string,
     response: BotResponse
   ): Promise<void> {
-    console.log(
-      `[DEBUG] Attempting to send scheduled response for user ${userId}, from: ${response.from}`
-    );
-    const activeScenario = this.getActiveScenario(userId);
-    if (!activeScenario) {
-      console.log(
-        `[DEBUG] Scenario for user ${userId} ended before scheduled response from ${response.from} could be sent.`
-      );
-      return;
-    }
-
-    try {
-      const bot = botManager.getBot(response.from);
-      if (!bot) {
-        console.error(
-          `[DEBUG] Bot ${response.from} not found for scheduled response.`
-        );
-        return;
-      }
-
-      const channelId =
-        response.channel === "business"
-          ? activeScenario.businessChannelId
-          : activeScenario.incidentChannelId;
-
-      // --- Format mentions before sending ---
-      const formattedMessage = this.formatMentions(response.message);
-
-      const result = await bot.app.client.chat.postMessage({
-        channel: channelId,
-        text: formattedMessage, // Use formatted message
-        username: `${response.from} (${response.role})`,
-      });
-
-      if (result.ok) {
-        console.log(
-          `[DEBUG] Successfully sent scheduled response from ${response.from} to ${channelId}.`
-        );
-        // Store original message in history
-        activeScenario.messageHistory.push({
-          from: response.from,
-          role: response.role,
-          channel: response.channel,
-          message: response.message, // Store original message
-          timestamp: new Date(),
-        });
-        if (activeScenario.messageHistory.length > this.MAX_HISTORY_ITEMS) {
-          activeScenario.messageHistory = activeScenario.messageHistory.slice(
-            activeScenario.messageHistory.length - this.MAX_HISTORY_ITEMS
-          );
-        }
-      } else {
-        console.error(
-          `[DEBUG] Failed to send scheduled response via API: ${JSON.stringify(
-            result
-          )}`
-        );
-      }
-    } catch (error) {
-      console.error(
-        `[DEBUG] Error caught in sendScheduledResponse for ${response.from}:`,
-        error
-      );
-    }
+    console.warn(`[DEPRECATED] sendScheduledResponse called for user ${userId}. This method is deprecated.`);
+    // Method kept for backward compatibility but no longer used
   }
 
   // --- ADD new method to send summary and schedule archival ---
@@ -826,6 +964,43 @@ class ScenarioService {
         summaryErr
       );
     }
+  }
+
+  /**
+   * Update scenario status and handle inactivity timer accordingly
+   */
+  private updateScenarioStatus(activeScenario: ActiveScenario, newStatus: "pending_start" | "active" | "resolved"): void {
+    const oldStatus = activeScenario.status;
+    activeScenario.status = newStatus;
+    
+    console.log(`[INACTIVITY] Scenario status changed from ${oldStatus} to ${newStatus} for user ${activeScenario.userId}`);
+    
+    // Handle timer based on status changes
+    if (newStatus === "active" && oldStatus !== "active") {
+      // Start timer when becoming active
+      this.resetInactivityTimer(activeScenario.userId);
+    } else if (newStatus !== "active" && oldStatus === "active") {
+      // Clear timer when leaving active state
+      this.clearInactivityTimer(activeScenario.userId);
+    }
+  }
+
+  /**
+   * Debug method to check inactivity timer status
+   */
+  getInactivityTimerStatus(userId: string): { hasTimer: boolean; timeoutMs: number } {
+    const hasTimer = this.inactivityTimers.has(userId);
+    return {
+      hasTimer,
+      timeoutMs: this.INACTIVITY_TIMEOUT_MS
+    };
+  }
+
+  /**
+   * Debug method to list all active inactivity timers
+   */
+  getAllInactivityTimers(): string[] {
+    return Array.from(this.inactivityTimers.keys());
   }
 }
 

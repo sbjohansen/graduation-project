@@ -160,6 +160,42 @@ app.post("/api/debug/send-message", express.json(), async (req, res) => {
   }
 });
 
+// Add debug endpoint to check inactivity timer status
+app.get("/api/debug/inactivity-timers", async (req, res) => {
+  try {
+    const scenarioService = require("./slack/messageHandler").messageHandler
+      .scenarioService;
+
+    const activeScenarios = scenarioService.getAllActiveScenarios();
+    const allTimers = scenarioService.getAllInactivityTimers();
+
+    const timerStatus = activeScenarios.map((scenario: any) => {
+      const timerInfo = scenarioService.getInactivityTimerStatus(scenario.userId);
+      return {
+        userId: scenario.userId,
+        userEmail: scenario.userEmail,
+        scenarioStatus: scenario.status,
+        hasInactivityTimer: timerInfo.hasTimer,
+        timeoutMs: timerInfo.timeoutMs,
+        timeoutSeconds: timerInfo.timeoutMs / 1000,
+      };
+    });
+
+    return res.json({
+      totalActiveScenarios: activeScenarios.length,
+      totalActiveTimers: allTimers.length,
+      scenarios: timerStatus,
+      allTimerUserIds: allTimers,
+    });
+  } catch (error: unknown) {
+    console.error("Error in inactivity timer debug endpoint:", error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return res
+      .status(500)
+      .json({ error: "Inactivity timer debug error", details: errorMessage });
+  }
+});
+
 // Check if CS-Bot configuration is present
 const validateCSBotConfig = () => {
   const token = process.env.CS_BOT_TOKEN;

@@ -26,12 +26,9 @@ interface LLMScenarioContext {
 }
 
 interface LLMResponse {
-  stepStatus: {
-    currentStep: number;
-    objectivesFulfilled: string[];
-    nextStep: number | null;
-    awardedBadges: string[];
-    otherStepData?: Record<string, any>;
+  simulationStatus?: {
+    awardedBadges?: string[];
+    isResolved?: boolean;
   };
   botResponses: {
     from: string;
@@ -40,6 +37,15 @@ interface LLMResponse {
     message: string;
   }[];
   narrativeResponse: string;
+  scheduledResponses?: {
+    delay: number;
+    response: {
+      from: string;
+      role: string;
+      channel: string;
+      message: string;
+    };
+  }[];
 }
 
 // OpenAI API types
